@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" width="1400" height="900" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#333333"/></marker>
+    <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#b85450"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#82b366"/></marker>
+    <marker id="ap" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#9673a6"/></marker>
+    <marker id="aps" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M10,0 L0,4 L10,8 z" fill="#9673a6"/></marker>
+    <marker id="ab" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#6c8ebf"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="900" fill="#ffffff"/>
+
+  <text x="60" y="58" font-size="20" font-weight="bold" fill="#1a1a1a">Multimodal Agentic RAG — Visual Product Search</text>
+
+  <rect x="330" y="90" width="380" height="60" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
+  <text x="520" y="112" font-size="13" text-anchor="middle" fill="#1a1a1a">Browser UI</text>
+  <text x="520" y="131" font-size="11" text-anchor="middle" fill="#333333">image upload + text query · results grid · agent trace</text>
+
+  <rect x="60" y="180" width="1000" height="690" rx="6" fill="none" stroke="#666666" stroke-dasharray="6 4"/>
+  <text x="74" y="202" font-size="13" font-style="italic" fill="#555555">docker-compose</text>
+
+  <rect x="90" y="225" width="700" height="620" rx="6" fill="#f5f5f5" stroke="#999999"/>
+  <text x="104" y="247" font-size="13" font-weight="bold" fill="#333333">api service (FastAPI)</text>
+
+  <rect x="120" y="270" width="290" height="50" rx="6" fill="#ffffff" stroke="#666666"/>
+  <text x="265" y="290" font-size="12" text-anchor="middle" fill="#1a1a1a">API key auth</text>
+  <text x="265" y="307" font-size="10" text-anchor="middle" fill="#555555">upload size / MIME validation</text>
+
+  <rect x="440" y="270" width="330" height="50" rx="6" fill="#ffffff" stroke="#666666"/>
+  <text x="605" y="300" font-size="12" text-anchor="middle" fill="#1a1a1a">POST /search · POST /ingest · GET /health</text>
+
+  <rect x="120" y="345" width="650" height="425" rx="6" fill="#fff2cc" stroke="#d6b656"/>
+  <text x="560" y="367" font-size="12" font-weight="bold" fill="#7a6320">Agent loop — max 3 iterations</text>
+
+  <rect x="150" y="390" width="230" height="55" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+  <text x="265" y="412" font-size="12" text-anchor="middle" fill="#1a1a1a">1 · Parse query</text>
+  <text x="265" y="429" font-size="10" text-anchor="middle" fill="#555555">text → structured constraints</text>
+
+  <rect x="150" y="475" width="230" height="55" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="265" y="497" font-size="12" text-anchor="middle" fill="#1a1a1a">2 · Retrieve</text>
+  <text x="265" y="514" font-size="10" text-anchor="middle" fill="#555555">vector kNN + payload filter</text>
+
+  <rect x="150" y="560" width="230" height="75" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="265" y="582" font-size="12" text-anchor="middle" fill="#1a1a1a">3 · Cheap checks — no LLM</text>
+  <text x="265" y="600" font-size="10" text-anchor="middle" fill="#555555">price / category via metadata</text>
+  <text x="265" y="616" font-size="10" text-anchor="middle" fill="#555555">colour + style via CLIP cosine</text>
+
+  <rect x="150" y="685" width="230" height="60" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
+  <text x="265" y="710" font-size="12" text-anchor="middle" fill="#1a1a1a">4 · Justify top 3–5</text>
+  <text x="265" y="727" font-size="10" text-anchor="middle" fill="#555555">vision LLM · per-item rationale</text>
+
+  <polygon points="460,595 550,545 640,595 550,645" fill="#ffffff" stroke="#666666"/>
+  <text x="550" y="591" font-size="12" text-anchor="middle" fill="#1a1a1a">constraints</text>
+  <text x="550" y="607" font-size="12" text-anchor="middle" fill="#1a1a1a">met?</text>
+
+  <rect x="460" y="405" width="180" height="60" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="550" y="430" font-size="12" text-anchor="middle" fill="#1a1a1a">Repair</text>
+  <text x="550" y="447" font-size="10" text-anchor="middle" fill="#555555">relax filter · rewrite query</text>
+
+  <rect x="120" y="785" width="650" height="45" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+  <text x="445" y="803" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenCLIP ViT-B/32 (ONNX) — local embeddings</text>
+  <text x="445" y="820" font-size="10" text-anchor="middle" fill="#555555">/ingest catalog indexing · /search query + colour checks</text>
+
+  <rect x="830" y="470" width="200" height="110" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
+  <text x="930" y="507" font-size="12" text-anchor="middle" fill="#1a1a1a">Qdrant</text>
+  <text x="930" y="527" font-size="10" text-anchor="middle" fill="#555555">image + text vectors</text>
+  <text x="930" y="543" font-size="10" text-anchor="middle" fill="#555555">payload: price, colour,</text>
+  <text x="930" y="558" font-size="10" text-anchor="middle" fill="#555555">category</text>
+
+  <rect x="1130" y="270" width="200" height="100" rx="6" fill="#f8cecc" stroke="#b85450" stroke-dasharray="6 4"/>
+  <text x="1230" y="302" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenRouter</text>
+  <text x="1230" y="322" font-size="10" text-anchor="middle" fill="#555555">free-tier model IDs</text>
+  <text x="1230" y="338" font-size="10" text-anchor="middle" fill="#555555">config + fallback list</text>
+
+  <text x="1130" y="432" font-size="11" font-style="italic" fill="#555555">2 LLM calls per query — cheap checks</text>
+  <text x="1130" y="448" font-size="11" font-style="italic" fill="#555555">absorb the rest, keeping free-tier</text>
+  <text x="1130" y="464" font-size="11" font-style="italic" fill="#555555">rate limits viable</text>
+
+  <rect x="1130" y="600" width="210" height="190" rx="0" fill="none" stroke="#b3b3b3" stroke-dasharray="4 3"/>
+  <text x="1145" y="624" font-size="12" font-weight="bold" fill="#333333">Legend</text>
+  <rect x="1145" y="645" width="18" height="18" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="1172" y="659" font-size="11" fill="#333333">no LLM call</text>
+  <rect x="1145" y="680" width="18" height="18" fill="#ffe6cc" stroke="#d79b00"/>
+  <text x="1172" y="694" font-size="11" fill="#333333">LLM call (OpenRouter)</text>
+  <rect x="1145" y="715" width="18" height="18" fill="#e1d5e7" stroke="#9673a6"/>
+  <text x="1172" y="729" font-size="11" fill="#333333">local service / model</text>
+  <rect x="1145" y="750" width="18" height="18" fill="#f8cecc" stroke="#b85450" stroke-dasharray="3 2"/>
+  <text x="1172" y="764" font-size="11" fill="#333333">external API</text>
+
+  <path d="M425,150 L425,245 L265,245 L265,270" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M410,295 L440,295" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M522,320 L522,335 L110,335 L110,417 L150,417" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M265,445 L265,475" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M265,530 L265,560" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M380,596 L460,595" fill="none" stroke="#333333" marker-end="url(#a)"/>
+  <path d="M550,545 L550,465" fill="none" stroke="#b85450" marker-end="url(#ar)"/>
+  <text x="560" y="510" font-size="11" fill="#b85450">no</text>
+  <path d="M460,435 L420,435 L420,502 L380,502" fill="none" stroke="#b85450" marker-end="url(#ar)"/>
+  <text x="392" y="455" font-size="11" fill="#b85450">re-query</text>
+  <path d="M550,645 L550,715 L380,715" fill="none" stroke="#82b366" marker-end="url(#ag)"/>
+  <text x="560" y="672" font-size="11" fill="#82b366">yes</text>
+  <path d="M380,489 L410,489 L410,525 L830,525" fill="none" stroke="#9673a6" marker-end="url(#ap)" marker-start="url(#aps)"/>
+  <text x="640" y="519" font-size="11" text-anchor="middle" fill="#9673a6">kNN + payload filter</text>
+  <path d="M150,597 L105,597 L105,807 L120,807" fill="none" stroke="#9673a6" marker-end="url(#ap)"/>
+  <text x="112" y="700" font-size="11" fill="#9673a6" transform="rotate(-90 112,700)" text-anchor="middle">cosine sim</text>
+  <path d="M380,417 L400,417 L400,340 L1090,340 L1090,320 L1130,320" fill="none" stroke="#b85450" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+  <path d="M265,745 L265,765 L1075,765 L1075,345 L1130,345" fill="none" stroke="#b85450" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+  <path d="M687,270 L687,170 L615,170 L615,150" fill="none" stroke="#6c8ebf" stroke-dasharray="6 4" marker-end="url(#ab)"/>
+  <text x="700" y="200" font-size="11" fill="#6c8ebf">results + rationale</text>
+</svg>
