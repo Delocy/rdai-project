@@ -12,7 +12,9 @@ from .embeddings import embed_image
 from .schemas import SearchResponse
 from .security import read_image, require_api_key
 
-FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
+ROOT = Path(__file__).resolve().parent.parent
+FRONTEND = ROOT / "frontend" / "dist"
+IMAGES = ROOT / "data" / "images"
 
 
 @asynccontextmanager
@@ -68,6 +70,10 @@ async def ingest(
     )
     return {"id": point_id}
 
+
+# mounted before the catch-all so /images wins over the frontend route
+IMAGES.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=IMAGES), name="images")
 
 if FRONTEND.is_dir():
     app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="ui")

@@ -18,6 +18,10 @@ services:
     env_file: .env
     environment:
       QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       qdrant:
         condition: service_healthy

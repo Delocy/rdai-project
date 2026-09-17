@@ -8,8 +8,12 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    text_models: str = "meta-llama/llama-3.3-70b-instruct:free"
-    vision_models: str = "qwen/qwen2.5-vl-72b-instruct:free"
+    text_models: str = "z-ai/glm-5.2:free"
+    vision_models: str = "google/gemma-4-26b-a4b-it:free"
+
+    ollama_url: str = "http://host.docker.internal:11434"
+    ollama_text_model: str = ""
+    ollama_vision_model: str = ""
 
     api_key: str = "change-me"
     max_upload_bytes: int = 5 * 1024 * 1024
@@ -20,7 +24,6 @@ class Settings(BaseSettings):
     max_iterations: int = 3
     top_k: int = 24
     shortlist: int = 5
-    colour_threshold: float = 0.22
 
     @property
     def text_model_list(self) -> list[str]:

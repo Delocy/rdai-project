@@ -25,24 +25,42 @@ def query_vector(text: str, image_bytes: bytes | None, constraints: Constraints)
 
 
 def repair(constraints: Constraints, rejected: dict[str, int]) -> tuple[Constraints, str]:
-    if rejected["over_price"] and constraints.price_max is not None:
+    for field in ("colour", "category"):
+        value = getattr(constraints, field)
+        if rejected[f"wrong_{field}"] and value:
+            return _demote(constraints, field, value), f"{field} filter -> query text"
+
+    if constraints.price_max is not None:
         widened = constraints.price_max * 1.25
         return constraints.model_copy(update={"price_max": widened}), f"price ceiling -> {widened:.2f}"
-    if rejected["wrong_colour"] and constraints.colour:
-        return constraints.model_copy(update={"colour": None}), "dropped colour filter"
-    if constraints.category:
-        return constraints.model_copy(update={"category": None}), "widened category"
     return constraints, ""
 
 
+def _demote(constraints: Constraints, field: str, value: str) -> Constraints:
+    """Drop a hard filter but keep its meaning as a soft signal in the embedding probe."""
+    intent = constraints.intent
+    if value.strip().lower() not in intent.lower():
+        intent = f"{value.strip()} {intent}".strip()
+    return constraints.model_copy(update={field: None, "intent": intent})
+
+
 def run(text: str, image_bytes: bytes | None) -> SearchResponse:
-    constraints = parse_query(text)
     trace: list[Step] = []
     kept: list[Candidate] = []
+    degraded = False
+
+    try:
+        constraints = parse_query(text)
+    except RuntimeError as exc:
+        constraints = Constraints(intent=text)
+        degraded = True
+        trace.append(
+            Step(iteration=0, action="parse unavailable", detail=str(exc)[:160], kept=0)
+        )
 
     for iteration in range(1, settings().max_iterations + 1):
         vector = query_vector(text, image_bytes, constraints)
-        points = store.search(vector, settings().top_k, constraints.price_max, constraints.category)
+        points = store.search(vector, settings().top_k, constraints.price_max)
 
         if constraints.relative_cheaper and constraints.price_max is None and points:
             reference = float((points[0].payload or {}).get("price", 0.0))
@@ -59,7 +77,7 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
                         kept=0,
                     )
                 )
-                points = store.search(vector, settings().top_k, cap, constraints.category)
+                points = store.search(vector, settings().top_k, cap)
 
         kept, rejected = apply(points, constraints)
         trace.append(
@@ -71,7 +89,7 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
             )
         )
 
-        if len(kept) >= settings().shortlist:
+        if len(kept) >= settings().shortlist or iteration == settings().max_iterations:
             break
 
         constraints, note = repair(constraints, rejected)
@@ -80,5 +98,13 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
         trace.append(Step(iteration=iteration, action="repair", detail=note, kept=len(kept)))
 
     shortlist = kept[: settings().shortlist]
-    ranked = justify(text or constraints.intent, shortlist, image_bytes)
-    return SearchResponse(constraints=constraints, results=ranked, trace=trace)
+    try:
+        ranked = justify(text or constraints.intent, shortlist, image_bytes)
+    except RuntimeError as exc:
+        ranked = shortlist
+        degraded = True
+        trace.append(
+            Step(iteration=0, action="ranking unavailable", detail=str(exc)[:160], kept=len(shortlist))
+        )
+
+    return SearchResponse(constraints=constraints, results=ranked, trace=trace, degraded=degraded)

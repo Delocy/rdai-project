@@ -1,8 +1,7 @@
 import json
 from typing import Any
 
-from ..config import settings
-from ..llm import complete, image_part
+from ..llm import VISION, complete, image_part
 from ..schemas import Candidate
 
 SYSTEM = (
@@ -34,14 +33,14 @@ def justify(
     if query_image:
         content.append(image_part(query_image))
 
+    raw = complete(
+        [{"role": "system", "content": SYSTEM}, {"role": "user", "content": content}],
+        VISION,
+        json_mode=True,
+    )
     try:
-        raw = complete(
-            [{"role": "system", "content": SYSTEM}, {"role": "user", "content": content}],
-            settings().vision_model_list,
-            json_mode=True,
-        )
         ranking = json.loads(raw).get("ranking", [])
-    except (RuntimeError, json.JSONDecodeError, AttributeError):
+    except (json.JSONDecodeError, AttributeError):
         return candidates
 
     by_id = {candidate.id: candidate for candidate in candidates}

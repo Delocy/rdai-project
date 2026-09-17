@@ -30,13 +30,8 @@ def search(
     vector: np.ndarray,
     limit: int,
     price_max: float | None = None,
-    category: str | None = None,
 ) -> list[models.ScoredPoint]:
     must: list[models.Condition] = []
-    if category:
-        must.append(
-            models.FieldCondition(key="category", match=models.MatchValue(value=category))
-        )
     if price_max is not None:
         must.append(models.FieldCondition(key="price", range=models.Range(lte=price_max)))
 

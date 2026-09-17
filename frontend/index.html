@@ -1,117 +1,12 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Visual Product Search</title>
-<style>
-  :root { color-scheme: light dark; --bg:#fbfbfc; --fg:#1a1a1a; --mut:#666; --line:#dcdce0; --card:#fff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#16171a; --fg:#ececed; --mut:#9a9aa2; --line:#2e3036; --card:#1e1f23; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; padding:32px 16px; background:var(--bg); color:var(--fg);
-         font:15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width:960px; margin:0 auto; }
-  h1 { font-size:22px; margin:0 0 24px; }
-  form { display:grid; gap:12px; padding:20px; border:1px solid var(--line);
-         border-radius:10px; background:var(--card); }
-  label { font-size:13px; color:var(--mut); }
-  input[type=text], input[type=password] { width:100%; padding:9px 11px; border:1px solid var(--line);
-         border-radius:7px; background:transparent; color:var(--fg); font:inherit; }
-  button { justify-self:start; padding:9px 20px; border:0; border-radius:7px;
-           background:#3b6ef5; color:#fff; font:inherit; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:default; }
-  #results { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-top:24px; }
-  .card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); }
-  .card img { width:100%; aspect-ratio:1; object-fit:cover; display:block; background:var(--line); }
-  .card div { padding:10px 12px; }
-  .card b { display:block; font-size:14px; }
-  .card span { color:var(--mut); font-size:12px; }
-  .card p { margin:6px 0 0; font-size:12px; color:var(--mut); }
-  details { margin-top:24px; border:1px solid var(--line); border-radius:10px; padding:12px 16px; background:var(--card); }
-  pre { margin:8px 0 0; font-size:12px; white-space:pre-wrap; color:var(--mut); }
-</style>
-</head>
-<body>
-<main>
-  <h1>Visual Product Search</h1>
-  <form id="f">
-    <div><label for="key">API key</label><input id="key" type="password" value="change-me"></div>
-    <div><label for="q">Request</label><input id="q" type="text" placeholder="like this but cheaper, in blue"></div>
-    <div><label for="img">Reference image (optional)</label><input id="img" type="file" accept="image/*"></div>
-    <button type="submit">Search</button>
-  </form>
-  <div id="results"></div>
-  <details id="tracebox" hidden><summary>Agent trace</summary><pre id="trace"></pre></details>
-</main>
-<script>
-const f = document.getElementById('f');
-const results = document.getElementById('results');
-const tracebox = document.getElementById('tracebox');
-const trace = document.getElementById('trace');
-
-f.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const button = f.querySelector('button');
-  button.disabled = true;
-  results.innerHTML = '';
-  tracebox.hidden = true;
-
-  const body = new FormData();
-  body.append('query', document.getElementById('q').value);
-  const file = document.getElementById('img').files[0];
-  if (file) body.append('image', file);
-
-  try {
-    const res = await fetch('/search', {
-      method: 'POST',
-      headers: { 'X-API-Key': document.getElementById('key').value },
-      body
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-
-    if (!data.results.length) {
-      const empty = document.createElement('p');
-      empty.textContent = 'No matches.';
-      results.append(empty);
-    }
-    for (const r of data.results) {
-      const card = document.createElement('div');
-      card.className = 'card';
-      if (r.image_url) {
-        const img = document.createElement('img');
-        img.src = r.image_url;
-        img.alt = '';
-        card.append(img);
-      }
-      const box = document.createElement('div');
-      const title = document.createElement('b');
-      title.textContent = r.title;
-      const price = document.createElement('span');
-      price.textContent = r.price;
-      box.append(title, price);
-      if (r.rationale) {
-        const why = document.createElement('p');
-        why.textContent = r.rationale;
-        box.append(why);
-      }
-      card.append(box);
-      results.append(card);
-    }
-
-    trace.textContent = data.trace.map(s =>
-      `${s.iteration} · ${s.action} — ${s.detail} (kept ${s.kept})`).join('\n');
-    tracebox.hidden = false;
-  } catch (err) {
-    const problem = document.createElement('p');
-    problem.textContent = err.message;
-    results.append(problem);
-  } finally {
-    button.disabled = false;
-  }
-});
-</script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visual Product Search</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

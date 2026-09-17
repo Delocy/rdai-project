@@ -17,7 +17,6 @@ class Candidate(BaseModel):
     colour: str | None = None
     image_url: str | None = None
     score: float
-    colour_score: float | None = None
     rationale: str | None = None
 
 
@@ -32,3 +31,4 @@ class SearchResponse(BaseModel):
     constraints: Constraints
     results: list[Candidate]
     trace: list[Step] = Field(default_factory=list)
+    degraded: bool = False
