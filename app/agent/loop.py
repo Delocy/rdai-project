@@ -59,7 +59,25 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
         )
 
     for iteration in range(1, settings().max_iterations + 1):
-        vector = query_vector(text, image_bytes, constraints)
+        try:
+            vector = query_vector(text, image_bytes, constraints)
+        except Exception as exc:
+            if not image_bytes:
+                raise
+            # the vision + text CLIP models together can exceed hosts with a
+            # small /tmp (e.g. Vercel's 500MB cap) - fall back to text only
+            # rather than failing the whole search
+            image_bytes = None
+            degraded = True
+            trace.append(
+                Step(
+                    iteration=iteration,
+                    action="image embedding unavailable",
+                    detail=str(exc)[:160],
+                    kept=0,
+                )
+            )
+            vector = query_vector(text, image_bytes, constraints)
         points = store.search(vector, settings().top_k, constraints.price_max)
 
         if constraints.relative_cheaper and constraints.price_max is None and points:

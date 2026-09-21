@@ -8,6 +8,10 @@ from io import BytesIO
 # not writable on read-only filesystems like Vercel's. Must be set before
 # fastembed (and therefore huggingface_hub) is imported.
 os.environ.setdefault("HF_HOME", os.path.join(tempfile.gettempdir(), "hf_home"))
+# xet stages a second copy of each file mid-download on top of the final
+# cached copy, roughly doubling peak disk use - not worth it against hosts
+# with a small /tmp (e.g. Vercel's 500MB cap)
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 
 import numpy as np
 from fastembed import ImageEmbedding, TextEmbedding
