@@ -70,10 +70,12 @@ async def ingest(
     )
     return {"id": point_id}
 
-
-# mounted before the catch-all so /images wins over the frontend route
-IMAGES.mkdir(parents=True, exist_ok=True)
-app.mount("/images", StaticFiles(directory=IMAGES), name="images")
+try:
+    IMAGES.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass 
+else:
+    app.mount("/images", StaticFiles(directory=IMAGES), name="images")
 
 if FRONTEND.is_dir():
     app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="ui")
