@@ -13,13 +13,17 @@ VISION = "vision"
 @lru_cache
 def _openrouter() -> OpenAI:
     cfg = settings()
-    return OpenAI(api_key=cfg.openrouter_api_key, base_url=cfg.openrouter_base_url)
+    # max_retries=0: complete() already falls back across text_model_list /
+    # vision_model_list on any failure, so the SDK's own retry-with-backoff
+    # would just block on one rate-limited free model instead of failing
+    # over fast to the next
+    return OpenAI(api_key=cfg.openrouter_api_key, base_url=cfg.openrouter_base_url, max_retries=0)
 
 
 @lru_cache
 def _ollama() -> OpenAI:
     # ollama ignores the key but the client requires one
-    return OpenAI(api_key="ollama", base_url=settings().ollama_url.rstrip("/") + "/v1")
+    return OpenAI(api_key="ollama", base_url=settings().ollama_url.rstrip("/") + "/v1", max_retries=0)
 
 
 def _attempts(kind: str) -> list[tuple[OpenAI, str]]:
