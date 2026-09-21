@@ -1,9 +1,11 @@
+const API_URL = import.meta.env.VITE_API_URL ?? "";
+
 export async function search({ query, image, apiKey }) {
   const body = new FormData();
   body.append("query", query);
   if (image) body.append("image", image);
 
-  const response = await fetch("/search", {
+  const response = await fetch(`${API_URL}/search`, {
     method: "POST",
     headers: { "X-API-Key": apiKey },
     body,

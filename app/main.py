@@ -3,11 +3,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from qdrant_client import models
 
 from . import store
 from .agent.loop import run
+from .config import settings
 from .embeddings import embed_image
 from .schemas import SearchResponse
 from .security import read_image, require_api_key
@@ -24,6 +26,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Visual Product Search", lifespan=lifespan)
+
+# empty by default (same-origin dev/Docker); set when the frontend is deployed
+# as a separate origin, e.g. a standalone Vercel project
+if settings().cors_origin_list:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings().cors_origin_list,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/health")

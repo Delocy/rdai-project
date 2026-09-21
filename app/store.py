@@ -9,7 +9,7 @@ from .embeddings import VECTOR_SIZE
 
 @lru_cache
 def client() -> QdrantClient:
-    return QdrantClient(url=settings().qdrant_url)
+    return QdrantClient(url=settings().qdrant_url, api_key=settings().qdrant_api_key or None)
 
 
 def ensure_collection() -> None:
