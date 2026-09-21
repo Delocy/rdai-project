@@ -1,5 +1,13 @@
+import os
+import tempfile
 from functools import lru_cache
 from io import BytesIO
+
+# huggingface_hub's xet download backend writes here regardless of the
+# cache_dir passed to fastembed, defaulting to $HOME/.cache/huggingface —
+# not writable on read-only filesystems like Vercel's. Must be set before
+# fastembed (and therefore huggingface_hub) is imported.
+os.environ.setdefault("HF_HOME", os.path.join(tempfile.gettempdir(), "hf_home"))
 
 import numpy as np
 from fastembed import ImageEmbedding, TextEmbedding
