@@ -117,6 +117,7 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
         yield emit(iteration=iteration, action="repair", detail=note, kept=len(kept))
 
     shortlist = kept[: settings().shortlist]
+    explained_empty = False
     try:
         ranked = justify(text or constraints.intent, shortlist, image_bytes)
     except RuntimeError as exc:
@@ -124,6 +125,24 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
         degraded = True
         yield emit(
             iteration=0, action="ranking unavailable", detail=str(exc)[:160], kept=len(shortlist)
+        )
+    else:
+        dropped = len(shortlist) - len(ranked)
+        if dropped:
+            explained_empty = True
+            yield emit(
+                iteration=0,
+                action="dropped weak matches",
+                detail=f"{dropped} nearest neighbour(s) didn't actually match the request",
+                kept=len(ranked),
+            )
+
+    if not ranked and not explained_empty:
+        yield emit(
+            iteration=0,
+            action="no match",
+            detail="nothing in the catalogue fit this request",
+            kept=0,
         )
 
     yield SearchResponse(constraints=constraints, results=ranked, trace=trace, degraded=degraded)

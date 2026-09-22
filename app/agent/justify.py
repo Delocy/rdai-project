@@ -6,8 +6,11 @@ from ..schemas import Candidate
 
 SYSTEM = (
     "You rank shopping search results. Given the request and candidate items, reply with JSON "
-    '{"ranking": [{"id": str, "rationale": str}]} ordered best first. '
-    "Each rationale is one short sentence naming why the item fits the request."
+    '{"ranking": [{"id": str, "rationale": str, "relevant": bool}]}, one entry per candidate, '
+    "ordered best first. relevant is true only when the item genuinely matches the request - "
+    "these are nearest neighbours from a vector search, and some can be unrelated. Don't stretch "
+    "a rationale to justify a bad match; mark it false instead. Each rationale is one short "
+    "sentence."
 )
 
 
@@ -47,7 +50,11 @@ def justify(
     ordered: list[Candidate] = []
     for entry in ranking:
         candidate = by_id.pop(str(entry.get("id")), None)
-        if candidate:
-            candidate.rationale = entry.get("rationale")
-            ordered.append(candidate)
+        if not candidate or entry.get("relevant", True) is False:
+            continue
+        candidate.rationale = entry.get("rationale")
+        ordered.append(candidate)
+    # anything left in by_id is a candidate the model never mentioned (e.g. a
+    # truncated response) rather than one it actively rejected - keep those
+    # rather than silently dropping results because the model half-answered
     return ordered + list(by_id.values())

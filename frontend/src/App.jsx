@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { search } from "./api.js";
 import Composer from "./components/Composer.jsx";
 import Results from "./components/Results.jsx";
-import Sidebar from "./components/Sidebar.jsx";
 import { Constraints, Trace } from "./components/Trace.jsx";
 
 // matches the sample catalogue scripts/fetch_catalogue.py + ingest.py load into
@@ -25,7 +24,6 @@ export default function App() {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [liveTrace, setLiveTrace] = useState([]);
-  const [history, setHistory] = useState([]);
   const started = useRef(0);
 
   useEffect(() => {
@@ -52,7 +50,6 @@ export default function App() {
         onStep: (step) => setLiveTrace((prev) => [...prev, step]),
       });
       setData(result);
-      setHistory((prev) => [{ query: text, count: result.results.length }, ...prev].slice(0, 12));
     } catch (err) {
       setError(err.message);
       setData(null);
@@ -72,69 +69,65 @@ export default function App() {
   const showTrace = busy || trace.length > 0;
 
   return (
-    <div className="shell">
-      <Sidebar history={history} onPick={setQuery} />
+    <main className="page">
+      <div className="page-inner">
+        <h1>Visual Product Search</h1>
+        <p className="subtitle">
+          Describe what you want, drop in a reference image, or both. The agent checks its own
+          results and rewrites the query when they fall short.
+        </p>
 
-      <main className="page">
-        <div className="page-inner">
-          <h1>Visual Product Search</h1>
-          <p className="subtitle">
-            Describe what you want, drop in a reference image, or both. The agent checks its own
-            results and rewrites the query when they fall short.
-          </p>
+        <Composer
+          query={query}
+          setQuery={setQuery}
+          image={image}
+          setImage={setImage}
+          onSubmit={run}
+          busy={busy}
+          elapsed={elapsed}
+        />
 
-          <Composer
-            query={query}
-            setQuery={setQuery}
-            image={image}
-            setImage={setImage}
-            onSubmit={run}
-            busy={busy}
-            elapsed={elapsed}
-          />
-
-          <div className="examples">
-            <span className="examples-label">Try:</span>
-            {EXAMPLES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                className="chip pick"
-                onClick={() => runExample(example)}
-                disabled={busy}
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-
-          {error ? <div className="callout">{error}</div> : null}
-
-          {showTrace ? (
-            <>
-              <h2>{busy ? "Thinking" : "How it got there"}</h2>
-              <Trace steps={trace} live={busy} />
-            </>
-          ) : null}
-
-          {data ? (
-            <>
-              {data.degraded ? (
-                <div className="callout">
-                  No language model was reachable, so these results come from vector search alone,
-                  without query parsing or ranking.
-                </div>
-              ) : null}
-
-              <h2>Understood as</h2>
-              <Constraints constraints={data.constraints} />
-
-              <h2>Results ({data.results.length})</h2>
-              <Results items={data.results} />
-            </>
-          ) : null}
+        <div className="examples">
+          <span className="examples-label">Try:</span>
+          {EXAMPLES.map((example) => (
+            <button
+              key={example}
+              type="button"
+              className="chip pick"
+              onClick={() => runExample(example)}
+              disabled={busy}
+            >
+              {example}
+            </button>
+          ))}
         </div>
-      </main>
-    </div>
+
+        {error ? <div className="callout">{error}</div> : null}
+
+        {showTrace ? (
+          <>
+            <h2>{busy ? "Thinking" : "How it got there"}</h2>
+            <Trace steps={trace} live={busy} />
+          </>
+        ) : null}
+
+        {data ? (
+          <>
+            {data.degraded ? (
+              <div className="callout">
+                No language model was reachable, so these results come from vector search alone,
+                without query parsing or ranking.
+              </div>
+            ) : null}
+
+            <h2>Understood as</h2>
+            <Constraints constraints={data.constraints} />
+
+            <h2>Results ({data.results.length})</h2>
+            <Results items={data.results} />
+          </>
+        ) : null}
+      </div>
+    </main>
   );
 }
