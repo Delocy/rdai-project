@@ -1,9 +1,11 @@
+import json
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from qdrant_client import models
 
@@ -11,7 +13,7 @@ from . import store
 from .agent.loop import run
 from .config import settings
 from .embeddings import embed_image
-from .schemas import SearchResponse
+from .schemas import Step
 from .security import read_image, require_api_key
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,15 +45,30 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/search", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
+@app.post("/search", dependencies=[Depends(require_api_key)])
 async def search(
     query: str = Form(default=""),
     image: UploadFile | None = File(default=None),
-) -> SearchResponse:
+) -> StreamingResponse:
+    """Streams newline-delimited JSON: one {"type": "step", "step": Step} line
+    per agent step as it happens, then a final {"type": "done", "response":
+    SearchResponse} (or {"type": "error", "detail": str} if it crashes
+    mid-stream, since headers are already sent by then)."""
     if not query.strip() and image is None:
         raise HTTPException(status_code=400, detail="provide a query, an image, or both")
     data = await read_image(image) if image else None
-    return run(query, data)
+
+    def events():
+        try:
+            for item in run(query, data):
+                if isinstance(item, Step):
+                    yield json.dumps({"type": "step", "step": item.model_dump()}) + "\n"
+                else:
+                    yield json.dumps({"type": "done", "response": item.model_dump()}) + "\n"
+        except Exception as exc:
+            yield json.dumps({"type": "error", "detail": str(exc)[:300]}) + "\n"
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
 
 
 @app.post("/ingest", dependencies=[Depends(require_api_key)])

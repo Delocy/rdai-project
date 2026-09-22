@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function Composer({
-  query,
-  setQuery,
-  image,
-  setImage,
-  apiKey,
-  setApiKey,
-  onSubmit,
-  busy,
-  elapsed,
-}) {
+export default function Composer({ query, setQuery, image, setImage, onSubmit, busy, elapsed }) {
   const fileRef = useRef(null);
   const [over, setOver] = useState(false);
   const [thumb, setThumb] = useState(null);
@@ -86,23 +76,6 @@ export default function Composer({
           hidden
           onChange={(e) => take(e.target.files[0])}
         />
-      </div>
-
-      <div className="keyline">
-        <label htmlFor="key">Backend API key</label>
-        <input
-          id="key"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="paste the API_KEY set on the backend"
-          autoComplete="off"
-        />
-        <span className="key-hint">
-          Secret the backend requires on every search (its <code>API_KEY</code> env var) — not an
-          OpenAI/OpenRouter key. Pre-filled from this deployment's <code>VITE_API_KEY</code> when
-          set; edit it here to use a different backend.
-        </span>
       </div>
     </form>
   );

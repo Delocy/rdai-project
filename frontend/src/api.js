@@ -1,13 +1,17 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "";
+const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
-export async function search({ query, image, apiKey }) {
+// /search streams newline-delimited JSON: a {"type":"step",...} line per
+// agent step as it happens, then a final {"type":"done","response":...}.
+// onStep fires for each step so the caller can show live progress.
+export async function search({ query, image, onStep }) {
   const body = new FormData();
   body.append("query", query);
   if (image) body.append("image", image);
 
   const response = await fetch(`${API_URL}/search`, {
     method: "POST",
-    headers: { "X-API-Key": apiKey },
+    headers: { "X-API-Key": API_KEY },
     body,
   });
 
@@ -20,21 +24,30 @@ export async function search({ query, image, apiKey }) {
     }
     throw new Error(`${response.status} — ${detail}`);
   }
-  return response.json();
-}
 
-export function loadKey() {
-  try {
-    return localStorage.getItem("apiKey") ?? "";
-  } catch {
-    return "";
-  }
-}
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result = null;
 
-export function saveKey(value) {
-  try {
-    localStorage.setItem("apiKey", value);
-  } catch {
-    /* storage unavailable */
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineAt;
+    while ((newlineAt = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, newlineAt).trim();
+      buffer = buffer.slice(newlineAt + 1);
+      if (!line) continue;
+
+      const event = JSON.parse(line);
+      if (event.type === "step") onStep?.(event.step);
+      else if (event.type === "done") result = event.response;
+      else if (event.type === "error") throw new Error(event.detail);
+    }
   }
+
+  if (!result) throw new Error("search stream ended without a result");
+  return result;
 }

@@ -21,7 +21,7 @@ export function Constraints({ constraints }) {
   );
 }
 
-export function Trace({ steps }) {
+export function Trace({ steps, live = false }) {
   return (
     <div className="trace">
       {steps.map((step, i) => {
@@ -39,6 +39,17 @@ export function Trace({ steps }) {
           </div>
         );
       })}
+      {live ? (
+        <div className="trace-row pulse">
+          <span className="n" />
+          <span className="act">
+            <span className="thinking-dot" />
+            {steps.length ? "Working" : "Thinking"}
+          </span>
+          <span className="det" />
+          <span className="kept" />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -561,6 +561,7 @@ h2 {
   border-bottom: 1px solid var(--line);
   font-size: 13.5px;
   transition: background-color 0.15s var(--ease);
+  animation: step-in 0.3s var(--ease);
 }
 
 .trace-row:hover {
@@ -584,6 +585,45 @@ h2 {
 .trace-row.repair .act,
 .trace-row.fail .act {
   color: var(--warn);
+}
+
+.trace-row.pulse .act {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--mut);
+  font-weight: 500;
+}
+
+.thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: thinking-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .trace-row .det {

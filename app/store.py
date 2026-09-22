@@ -14,11 +14,18 @@ def client() -> QdrantClient:
 
 def ensure_collection() -> None:
     name = settings().collection
-    if client().collection_exists(name):
-        return
-    client().create_collection(
+    if not client().collection_exists(name):
+        client().create_collection(
+            collection_name=name,
+            vectors_config=models.VectorParams(size=VECTOR_SIZE, distance=models.Distance.COSINE),
+        )
+    # search() filters on price; Qdrant (at least on Cloud) rejects a filter on
+    # an unindexed field with 400 Bad Request, so this must exist before any
+    # price_max-constrained search runs. Idempotent - safe on every startup.
+    client().create_payload_index(
         collection_name=name,
-        vectors_config=models.VectorParams(size=VECTOR_SIZE, distance=models.Distance.COSINE),
+        field_name="price",
+        field_schema=models.PayloadSchemaType.FLOAT,
     )
 
 

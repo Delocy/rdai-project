@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { loadKey, saveKey, search } from "./api.js";
+import { search } from "./api.js";
 import Composer from "./components/Composer.jsx";
 import Results from "./components/Results.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -20,17 +20,13 @@ const EXAMPLES = [
 export default function App() {
   const [query, setQuery] = useState("");
   const [image, setImage] = useState(null);
-  // a saved key (user typed one in before) always wins; otherwise fall back
-  // to the key baked in at build time via VITE_API_KEY, if the deployer set one
-  const [apiKey, setApiKey] = useState(() => loadKey() || import.meta.env.VITE_API_KEY || "");
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+  const [liveTrace, setLiveTrace] = useState([]);
   const [history, setHistory] = useState([]);
   const started = useRef(0);
-
-  useEffect(() => saveKey(apiKey), [apiKey]);
 
   useEffect(() => {
     if (!busy) return;
@@ -47,8 +43,14 @@ export default function App() {
     }
     setBusy(true);
     setError(null);
+    setData(null);
+    setLiveTrace([]);
     try {
-      const result = await search({ query: text, image, apiKey });
+      const result = await search({
+        query: text,
+        image,
+        onStep: (step) => setLiveTrace((prev) => [...prev, step]),
+      });
       setData(result);
       setHistory((prev) => [{ query: text, count: result.results.length }, ...prev].slice(0, 12));
     } catch (err) {
@@ -63,6 +65,11 @@ export default function App() {
     setQuery(text);
     run(text);
   }
+
+  // data.trace once a search finishes; liveTrace while running, or as the
+  // last-known progress if it errored out partway through
+  const trace = data?.trace ?? liveTrace;
+  const showTrace = busy || trace.length > 0;
 
   return (
     <div className="shell">
@@ -81,8 +88,6 @@ export default function App() {
             setQuery={setQuery}
             image={image}
             setImage={setImage}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
             onSubmit={run}
             busy={busy}
             elapsed={elapsed}
@@ -105,10 +110,11 @@ export default function App() {
 
           {error ? <div className="callout">{error}</div> : null}
 
-          {busy ? (
-            <div className="callout plain">
-              Searching. Ranking runs a vision model, so this can take a while.
-            </div>
+          {showTrace ? (
+            <>
+              <h2>{busy ? "Thinking" : "How it got there"}</h2>
+              <Trace steps={trace} live={busy} />
+            </>
           ) : null}
 
           {data ? (
@@ -125,13 +131,6 @@ export default function App() {
 
               <h2>Results ({data.results.length})</h2>
               <Results items={data.results} />
-
-              {data.trace.length ? (
-                <>
-                  <h2>How it got there</h2>
-                  <Trace steps={data.trace} />
-                </>
-              ) : null}
             </>
           ) : null}
         </div>

@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import numpy as np
 
 from .. import store
@@ -44,19 +46,24 @@ def _demote(constraints: Constraints, field: str, value: str) -> Constraints:
     return constraints.model_copy(update={field: None, "intent": intent})
 
 
-def run(text: str, image_bytes: bytes | None) -> SearchResponse:
+def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]:
+    """Runs the search agent, yielding each Step as it happens and finishing
+    with the complete SearchResponse, so callers can show live progress."""
     trace: list[Step] = []
     kept: list[Candidate] = []
     degraded = False
+
+    def emit(**fields) -> Step:
+        step = Step(**fields)
+        trace.append(step)
+        return step
 
     try:
         constraints = parse_query(text)
     except RuntimeError as exc:
         constraints = Constraints(intent=text)
         degraded = True
-        trace.append(
-            Step(iteration=0, action="parse unavailable", detail=str(exc)[:160], kept=0)
-        )
+        yield emit(iteration=0, action="parse unavailable", detail=str(exc)[:160], kept=0)
 
     for iteration in range(1, settings().max_iterations + 1):
         try:
@@ -69,13 +76,11 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
             # rather than failing the whole search
             image_bytes = None
             degraded = True
-            trace.append(
-                Step(
-                    iteration=iteration,
-                    action="image embedding unavailable",
-                    detail=str(exc)[:160],
-                    kept=0,
-                )
+            yield emit(
+                iteration=iteration,
+                action="image embedding unavailable",
+                detail=str(exc)[:160],
+                kept=0,
             )
             vector = query_vector(text, image_bytes, constraints)
         points = store.search(vector, settings().top_k, constraints.price_max)
@@ -87,24 +92,20 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
                 constraints = constraints.model_copy(
                     update={"price_max": cap, "relative_cheaper": False}
                 )
-                trace.append(
-                    Step(
-                        iteration=iteration,
-                        action="derive budget",
-                        detail=f"top match {reference:.2f}, cap {cap:.2f}",
-                        kept=0,
-                    )
+                yield emit(
+                    iteration=iteration,
+                    action="derive budget",
+                    detail=f"top match {reference:.2f}, cap {cap:.2f}",
+                    kept=0,
                 )
                 points = store.search(vector, settings().top_k, cap)
 
         kept, rejected = apply(points, constraints)
-        trace.append(
-            Step(
-                iteration=iteration,
-                action="retrieve + check",
-                detail=f"{len(points)} retrieved, rejected {rejected}",
-                kept=len(kept),
-            )
+        yield emit(
+            iteration=iteration,
+            action="retrieve + check",
+            detail=f"{len(points)} retrieved, rejected {rejected}",
+            kept=len(kept),
         )
 
         if len(kept) >= settings().shortlist or iteration == settings().max_iterations:
@@ -113,7 +114,7 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
         constraints, note = repair(constraints, rejected)
         if not note:
             break
-        trace.append(Step(iteration=iteration, action="repair", detail=note, kept=len(kept)))
+        yield emit(iteration=iteration, action="repair", detail=note, kept=len(kept))
 
     shortlist = kept[: settings().shortlist]
     try:
@@ -121,8 +122,8 @@ def run(text: str, image_bytes: bytes | None) -> SearchResponse:
     except RuntimeError as exc:
         ranked = shortlist
         degraded = True
-        trace.append(
-            Step(iteration=0, action="ranking unavailable", detail=str(exc)[:160], kept=len(shortlist))
+        yield emit(
+            iteration=0, action="ranking unavailable", detail=str(exc)[:160], kept=len(shortlist)
         )
 
-    return SearchResponse(constraints=constraints, results=ranked, trace=trace, degraded=degraded)
+    yield SearchResponse(constraints=constraints, results=ranked, trace=trace, degraded=degraded)
