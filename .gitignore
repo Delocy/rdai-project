@@ -3,7 +3,8 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-data/
+data/*
+!data/images/
 .fastembed_cache/
 frontend/node_modules/
 frontend/dist/

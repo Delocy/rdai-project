@@ -41,10 +41,24 @@ def fetch_rows(limit: int):
         collected += len(rows)
 
 
+DEFAULT_IMAGE_BASE_URL = "https://raw.githubusercontent.com/Delocy/rdai-project/main/data/images"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="download a sample catalogue")
     parser.add_argument("--limit", type=int, default=300)
     parser.add_argument("--out", type=Path, default=Path("data"))
+    parser.add_argument(
+        "--image-base-url",
+        default=DEFAULT_IMAGE_BASE_URL,
+        help=(
+            "base URL the downloaded images will be reachable at once committed "
+            "(e.g. a raw.githubusercontent.com path) - the dataset's own hosted "
+            "URLs are signed and expire within ~a day, so they're not usable as "
+            "a lasting image_url. Pass '' to fall back to the (short-lived) "
+            "source URL instead."
+        ),
+    )
     args = parser.parse_args()
 
     images = args.out / "images"
@@ -53,7 +67,9 @@ def main() -> None:
 
     written = 0
     with catalogue.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["title", "price", "image", "category", "colour"])
+        writer = csv.DictWriter(
+            handle, fieldnames=["title", "price", "image", "category", "colour", "image_url"]
+        )
         writer.writeheader()
 
         for row in fetch_rows(args.limit):
@@ -70,12 +86,14 @@ def main() -> None:
                 except Exception:
                     continue
 
+            image_url = f"{args.image_base_url}/{name}" if args.image_base_url else source
             writer.writerow({
                 "title": title,
                 "price": price_for(row.get("articleType", ""), row["id"]),
                 "image": name,
                 "category": row.get("articleType") or row.get("subCategory"),
                 "colour": row.get("baseColour"),
+                "image_url": image_url,
             })
             written += 1
             if written % 50 == 0:
