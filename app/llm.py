@@ -46,6 +46,12 @@ def complete(messages: list[dict[str, Any]], kind: str, json_mode: bool = False)
     for client, model in _attempts(kind):
         try:
             response = client.chat.completions.create(model=model, **kwargs)
+            if not response.choices:
+                # OpenRouter sometimes answers upstream-provider failures with
+                # HTTP 200 and an `error` field instead of a 5xx, so the SDK
+                # doesn't raise on its own - surface it instead of hitting
+                # 'NoneType' object is not subscriptable on response.choices[0]
+                raise RuntimeError(f"{model} returned no choices: {getattr(response, 'error', None)}")
             return response.choices[0].message.content or ""
         except Exception as exc:
             last = exc
