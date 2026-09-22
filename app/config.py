@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    text_models: str = "z-ai/glm-5.2:free"
+    text_models: str = "z-ai/glm-5.2:free,nvidia/nemotron-3-super-120b-a12b:free,poolside/laguna-s-2.1:free"
     vision_models: str = "google/gemma-4-26b-a4b-it:free,dots-studio/dots-3-note-preview:free"
 
     ollama_url: str = "http://host.docker.internal:11434"

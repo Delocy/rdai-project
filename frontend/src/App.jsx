@@ -20,7 +20,9 @@ const EXAMPLES = [
 export default function App() {
   const [query, setQuery] = useState("");
   const [image, setImage] = useState(null);
-  const [apiKey, setApiKey] = useState(loadKey);
+  // a saved key (user typed one in before) always wins; otherwise fall back
+  // to the key baked in at build time via VITE_API_KEY, if the deployer set one
+  const [apiKey, setApiKey] = useState(() => loadKey() || import.meta.env.VITE_API_KEY || "");
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState(null);

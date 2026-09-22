@@ -99,9 +99,9 @@ export default function Composer({
           autoComplete="off"
         />
         <span className="key-hint">
-          Shared secret the backend requires on every search (its <code>API_KEY</code> env var) —
-          not an OpenAI/OpenRouter key. Ask whoever deployed this for it. Stored only in this
-          browser.
+          Secret the backend requires on every search (its <code>API_KEY</code> env var) — not an
+          OpenAI/OpenRouter key. Pre-filled from this deployment's <code>VITE_API_KEY</code> when
+          set; edit it here to use a different backend.
         </span>
       </div>
     </form>
