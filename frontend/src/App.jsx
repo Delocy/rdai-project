@@ -73,8 +73,10 @@ export default function App() {
       <div className="page-inner">
         <h1>Visual Product Search</h1>
         <p className="subtitle">
-          Describe what you want, drop in a reference image, or both. The agent checks its own
-          results and rewrites the query when they fall short.
+          Describe what you want, drop in a reference image, or both. This is a demo catalogue
+          with invented prices, not a shop, it is to show an agent that checks its own
+          results, rewrites the query when they fall short, and says so when nothing
+          matches instead of faking a good answer.
         </p>
 
         <Composer
@@ -124,7 +126,7 @@ export default function App() {
             <Constraints constraints={data.constraints} />
 
             <h2>Results ({data.results.length})</h2>
-            <Results items={data.results} />
+            <Results items={data.results} degraded={data.degraded} />
           </>
         ) : null}
       </div>

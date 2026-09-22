@@ -388,6 +388,7 @@ h2 {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  cursor: pointer;
   transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
@@ -445,6 +446,29 @@ h2 {
   font-size: 12.5px;
   color: var(--mut);
   font-weight: 400;
+}
+
+.card-detail {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: step-in 0.2s var(--ease);
+}
+
+.card-detail .why-missing {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--warn);
+}
+
+.card-detail .score-line {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
 /* trace */
