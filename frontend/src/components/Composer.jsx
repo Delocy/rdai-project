@@ -89,14 +89,20 @@ export default function Composer({
       </div>
 
       <div className="keyline">
-        <label htmlFor="key">API key</label>
+        <label htmlFor="key">Backend API key</label>
         <input
           id="key"
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
+          placeholder="paste the API_KEY set on the backend"
           autoComplete="off"
         />
+        <span className="key-hint">
+          Shared secret the backend requires on every search (its <code>API_KEY</code> env var) —
+          not an OpenAI/OpenRouter key. Ask whoever deployed this for it. Stored only in this
+          browser.
+        </span>
       </div>
     </form>
   );

@@ -6,6 +6,17 @@ import Results from "./components/Results.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import { Constraints, Trace } from "./components/Trace.jsx";
 
+// matches the sample catalogue scripts/fetch_catalogue.py + ingest.py load into
+// Qdrant (fashion products with a title, price, category and colour)
+const EXAMPLES = [
+  "red running shoes under 40",
+  "black leather handbag",
+  "formal shoes for a wedding",
+  "blue denim jacket",
+  "sunglasses under 50",
+  "casual white sneakers",
+];
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [image, setImage] = useState(null);
@@ -27,23 +38,28 @@ export default function App() {
     return () => clearInterval(id);
   }, [busy]);
 
-  async function run() {
-    if (!query.trim() && !image) {
+  async function run(text = query) {
+    if (!text.trim() && !image) {
       setError("Type a request, add an image, or both.");
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const result = await search({ query, image, apiKey });
+      const result = await search({ query: text, image, apiKey });
       setData(result);
-      setHistory((prev) => [{ query, count: result.results.length }, ...prev].slice(0, 12));
+      setHistory((prev) => [{ query: text, count: result.results.length }, ...prev].slice(0, 12));
     } catch (err) {
       setError(err.message);
       setData(null);
     } finally {
       setBusy(false);
     }
+  }
+
+  function runExample(text) {
+    setQuery(text);
+    run(text);
   }
 
   return (
@@ -69,6 +85,21 @@ export default function App() {
             busy={busy}
             elapsed={elapsed}
           />
+
+          <div className="examples">
+            <span className="examples-label">Try:</span>
+            {EXAMPLES.map((example) => (
+              <button
+                key={example}
+                type="button"
+                className="chip pick"
+                onClick={() => runExample(example)}
+                disabled={busy}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
 
           {error ? <div className="callout">{error}</div> : null}
 

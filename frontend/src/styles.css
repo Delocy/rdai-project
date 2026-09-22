@@ -278,8 +278,9 @@ h2 {
 .keyline {
   margin-top: 10px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   font-size: 13px;
   color: var(--faint);
 }
@@ -292,6 +293,50 @@ h2 {
   background: none;
   padding: 4px 8px;
   font-size: 13px;
+}
+
+.key-hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.key-hint code {
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  background: var(--tag);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* examples */
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.examples-label {
+  font-size: 13px;
+  color: var(--faint);
+  margin-right: 2px;
+}
+
+.chip.pick {
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.chip.pick:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+.chip.pick:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* callouts */
