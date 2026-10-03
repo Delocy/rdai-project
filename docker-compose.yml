@@ -1,6 +1,7 @@
 services:
   qdrant:
-    image: qdrant/qdrant:latest
+    # pinned to match qdrant-client in uv.lock - bump the two together
+    image: qdrant/qdrant:v1.19.1
     ports:
       - "6333:6333"
     volumes:
@@ -12,7 +13,10 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_KEY: ${API_KEY}
     ports:
       - "8000:8000"
     env_file: .env

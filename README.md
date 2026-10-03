@@ -14,10 +14,16 @@ your constraints, repairs the query when they fall short, and explains what it p
 4. **Repair** — if too few survive, rewrite the query and retry (max 3 passes). Dropping the colour
    filter moves the colour into the embedding probe instead, so it stays a soft preference rather
    than disappearing; the price ceiling widens; the category is dropped last.
-5. **Justify** — a vision LLM ranks the survivors and writes one line per item.
+5. **Justify** — a vision LLM ranks the survivors and writes one line per item, dropping any that
+   don't actually fit rather than stretching a rationale to justify a bad nearest-neighbour match.
 
 Only steps 1 and 5 call an LLM. Everything else is embedding maths and metadata filtering, which
 keeps the whole thing inside free-tier rate limits.
+
+The frontend streams each step to the browser as it happens instead of waiting for a final
+answer, so you see the retrieve/check/repair loop live rather than staring at a spinner. If a
+search genuinely has no match in the catalogue, it says so and stops — it doesn't hand you the
+five nearest photos and pretend they're what you asked for.
 
 Colour checking started out as CLIP zero-shot classification. Measured on this catalogue it was
 42% accurate, and an absolute cosine threshold separated blue from non-blue items barely at all
@@ -30,14 +36,28 @@ embedding API is involved. Only the two LLM calls leave the machine.
 
 ## Running it
 
-Requires Docker and an OpenRouter API key (free — https://openrouter.ai/keys).
+Requires Docker with Compose v2 (Docker Desktop, or Docker Engine with the compose plugin) and
+ports 8000 and 6333 free. Nothing else needs installing on the host: the frontend is built inside
+the image and served by the API on the same port, and Qdrant runs as a second container.
 
 ```bash
-cp .env.example .env      # add your key, change API_KEY
+git clone https://github.com/Delocy/rdai-project.git
+cd rdai-project
+cp .env.example .env      # add your OpenRouter key, change API_KEY
 docker compose up --build
 ```
 
-Then open http://localhost:8000.
+Then open http://localhost:8000 once the log shows `Application startup complete`. The first run
+takes a few minutes: the build bakes the CLIP weights into the image, and with an empty database
+the API seeds itself from the sample catalogue that ships in the repo, embedding 300 images
+locally before it starts serving. After that it's instant on every restart.
+
+The OpenRouter key (free — https://openrouter.ai/keys) drives the two LLM steps. Without one
+everything still starts and searches still return results, just plain vector-search matches marked
+`degraded` (see the fallback note below).
+
+`Ctrl+C` or `docker compose down` stops it; `docker compose down -v` also wipes the index, so the
+next start re-seeds from scratch.
 
 The free model IDs in `.env.example` go stale as OpenRouter rotates them. List current ones with:
 
@@ -61,9 +81,14 @@ ollama pull llama3.2:3b
 ollama pull qwen2.5vl:7b
 ```
 
-## Loading a catalogue
+## Catalogue
 
-Pull a sample catalogue (fashion products from Hugging Face, no account needed) and index it:
+The 300-item sample (real fashion product photos, invented prices) is committed under `data/` and
+loads itself the first time the collection is empty, so there's nothing to run for it. It's a
+demo catalogue, not real inventory — the point is watching the agent work, not buying anything.
+
+To pull a different sample from the source (fashion products on Hugging Face, no account needed)
+and re-index it yourself:
 
 ```bash
 docker compose exec api python -m scripts.fetch_catalogue --limit 300
@@ -89,6 +114,10 @@ folder. Single items can go in via `POST /ingest`.
 ## Security notes
 
 - API key compared with `secrets.compare_digest`, never logged
+- the Docker build bakes `API_KEY` into the frontend's own build as `VITE_API_KEY`, so the browser
+  and backend agree on one value from one `.env` entry with nothing to configure twice — that only
+  works because frontend and backend are the same trust boundary here (one container, one origin);
+  it is not how you'd hand a key to a frontend hosted somewhere else
 - uploads restricted to jpeg/png/webp and capped at 5 MB, enforced while reading rather than trusting `Content-Length`
 - container runs as a non-root user
 - `.env` is gitignored; `.env.example` carries no real secrets

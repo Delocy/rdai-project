@@ -15,15 +15,26 @@ from .config import settings
 from .embeddings import embed_image
 from .schemas import Step
 from .security import read_image, require_api_key
+from .seed import seed_from_csv
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend" / "dist"
 IMAGES = ROOT / "data" / "images"
+CATALOGUE = ROOT / "data" / "catalogue.csv"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     store.ensure_collection()
+    # first run against a fresh Qdrant: seed the sample catalogue automatically
+    # so `docker compose up --build` alone is enough to get real search
+    # results, rather than requiring a separate ingest command
+    if CATALOGUE.is_file() and store.count() == 0:
+        try:
+            total = seed_from_csv(CATALOGUE, IMAGES)
+            print(f"seeded {total} catalogue items into an empty collection")
+        except Exception as exc:
+            print(f"catalogue auto-seed failed, starting with an empty collection: {exc}")
     yield
 
 

@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 data/*
 !data/images/
+!data/catalogue.csv
 .fastembed_cache/
 frontend/node_modules/
 frontend/dist/

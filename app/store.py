@@ -33,6 +33,10 @@ def upsert(points: list[models.PointStruct]) -> None:
     client().upsert(collection_name=settings().collection, points=points)
 
 
+def count() -> int:
+    return client().count(settings().collection, exact=False).count
+
+
 def search(
     vector: np.ndarray,
     limit: int,
