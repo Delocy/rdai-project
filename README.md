@@ -176,7 +176,8 @@ npm run dev
 ```
 
 That serves the UI on http://localhost:5173 with hot reload, proxying `/search` and `/images`
-to the backend on port 8000 (see `vite.config.js`), so run uvicorn alongside it.
+to the backend on port 8000 (see `vite.config.js`), so run uvicorn alongside it. `npm test` runs
+the wording tests, which pin every sentence the UI builds from a search.
 
 `npm run build` emits `frontend/dist`, which `app/main.py` mounts at `/` when it exists. The Docker
 image builds it in a separate stage, so `docker compose up --build` serves the built UI from port
