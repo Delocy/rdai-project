@@ -18,18 +18,18 @@ def rows(catalogue: Path):
 
 
 def point_id(row: dict) -> str:
-    """Stable per image file, so re-indexing overwrites a product instead of duplicating it."""
+    """Stable id per image file, so re-indexing overwrites instead of duplicating."""
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"catalogue/{row['image']}"))
 
 
 def seed_from_csv(catalogue: Path, images: Path, batch_size: int = 32, log=print) -> int:
-    """(Re-)index every row; products already in the collection are overwritten in place."""
+    """Index every row, overwriting products already in the collection."""
     return _index(_indexable(catalogue, images), images, batch_size, log)
 
 
 def seed_missing(catalogue: Path, images: Path, batch_size: int = 32, log=print) -> int:
-    """Index the rows that aren't in the collection yet, so an interrupted first start
-    resumes. A collection filled some other way (older random ids) is left alone."""
+    """Index only rows not yet in the collection, so an interrupted first start resumes.
+    A collection filled some other way is left alone."""
     pending = _indexable(catalogue, images)
     existing = store.existing_ids([point_id(row) for row in pending])
     if not existing and store.count() > 0:

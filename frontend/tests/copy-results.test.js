@@ -6,7 +6,6 @@ import {
   missSentence,
   nothingFits,
   onlyNearMisses,
-  rankingLabel,
   requestPhrase,
   resultDetail,
 } from "../src/copy.js";
@@ -19,7 +18,7 @@ test("amounts drop zero cents in sentences", () => {
 });
 
 test("amounts round like the server, so the trace and the banners agree", () => {
-  // 50 raised twice by 25% is 78.125, which the server's "{:.2f}" prints as 78.12 (halves go to even)
+  // 50 raised twice by 25% is 78.125, which Python prints as 78.12
   assert.equal(amount(78.125), "$78.12");
   assert.equal(amount(46.875), "$46.88");
 });
@@ -31,20 +30,14 @@ test("the request phrase reads like a shopper wrote it", () => {
   assert.equal(requestPhrase({ category: "Watches" }), "watches");
 });
 
-test("the ranking label names how results were ordered", () => {
-  assert.equal(rankingLabel("similarity"), "Ranked by visual similarity");
-  assert.equal(rankingLabel("llm"), "Ranked by a vision model");
-});
-
 test("misses become plain sentences", () => {
   assert.equal(missSentence("Beige, not Pink"), "Beige rather than pink.");
   assert.equal(missSentence("Sweatshirts, not Jackets"), "Sweatshirts rather than jackets.");
   assert.equal(missSentence("over budget by 4.50"), "$4.50 over your budget.");
 });
 
-test("a result opens to the model's reason, why it's shown, or that it fits", () => {
-  const item = (fields) => ({ rationale: null, misses: [], ...fields });
-  assert.equal(resultDetail(item({ rationale: "Same checked pattern." }), pinkTops), "Same checked pattern.");
+test("a result opens to why it's shown, or that it fits", () => {
+  const item = (fields) => ({ misses: [], ...fields });
   assert.equal(
     resultDetail(item({ misses: ["Beige, not Pink"] }), pinkTops),
     "Beige rather than pink. Shown because there aren't enough pink tops under $30.",

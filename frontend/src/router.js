@@ -6,7 +6,7 @@ export function routeFor(hash) {
   return hash === ROUTES.how ? "how" : "search";
 }
 
-// the page to show, following the URL hash (so the back button works)
+// current page from the URL hash, so the back button works
 export function useHashRoute() {
   const [route, setRoute] = useState(() => routeFor(window.location.hash));
   useEffect(() => {

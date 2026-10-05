@@ -1,16 +1,15 @@
 # Visual Product Search
 
 Multimodal product search over a small fashion catalogue, served by FastAPI in Docker. Give it a
-photo, a description or both ("like this but cheaper, in grey") and an agent loop retrieves
-candidates, checks them against the request, repairs the query when they fall short and marks
+photo, a description or both ("like this but cheaper, in grey") and a search loop retrieves
+candidates, checks them against the request, relaxes the query when they fall short and marks
 anything that doesn't fully match.
 
 The model is CLIP ViT-B/32 (public weights, ONNX via fastembed), baked into the image and run on
-CPU, with Qdrant as the vector database. `POST /embed` serves it directly; `/search` runs the agent
-on top. No API keys are needed. An LLM is optional and only re-ranks results by looking at the
-photos.
+CPU, with Qdrant as the vector database. `POST /embed` serves it directly; `/search` runs the search
+loop on top. No API keys or LLMs are needed.
 
-![search results for "red running shoes under 40", showing the agent's trace, what it relaxed and the marked misses](docs/screenshot.png)
+![search results for "red running shoes under 40", showing the search trace, what it relaxed and the marked misses](docs/screenshot.png)
 
 ![architecture](docs/architecture.svg)
 
@@ -21,9 +20,11 @@ Needs Docker with Compose v2, and ports 8000 and 6333 free.
 ```bash
 git clone https://github.com/Delocy/rdai-project.git
 cd rdai-project
-cp .env.example .env      # works as is; change API_KEY if you like
 docker compose up --build
 ```
+
+No `.env` is needed. To change the API key or the rate limit, `cp .env.example .env` and edit it
+before building.
 
 Open http://localhost:8000 once the log shows `Application startup complete`. The first run takes
 longer: the build bakes in the CLIP weights, and the API indexes the 300 sample products before it
@@ -34,16 +35,18 @@ then shows the api as healthy. The API docs are at http://localhost:8000/docs.
 ## How it works
 
 1. **Read** - rules pull out a budget ("under 40"), a colour and a category, using the catalogue's
-   own labels plus a few everyday words (sneakers, tee). `LLM_PARSE=true` hands this to an LLM.
-2. **Retrieve** - CLIP embeds the text and/or photo; Qdrant returns the 24 nearest products within
-   budget.
-3. **Check** - category and colour against each product's metadata, word by word ("Shirts" isn't
-   "Tshirts").
-4. **Repair** - with fewer than five survivors, relax and retry, at most 3 passes: colour becomes a
-   soft preference, then the budget widens 25%, and the category goes last. What was relaxed is
-   reported, and misses are marked ("over budget by 4.50", "Black, not Red").
-5. **Rank** - by visual similarity, or, with a vision model configured, by the model looking at a
-   numbered contact sheet of the shortlist's photos and dropping what doesn't fit.
+   own labels plus a few everyday words (sneakers, tee).
+2. **Match** - the category and colour become the catalogue labels they name, matched word by word
+   ("Shirts" isn't "Tshirts"; "shoes" covers Casual, Sports and Formal Shoes).
+3. **Retrieve** - CLIP embeds the text and/or photo, and Qdrant returns the 24 nearest products that
+   pass the budget, category and colour filters - so a match anywhere in the catalogue is found,
+   not only one among the nearest few.
+4. **Repair** - with fewer than five matches, relax and retry, at most 3 passes: colour becomes a
+   soft preference when dropping it brings in more products, then the budget widens 25%, and the
+   category goes last. What was relaxed is reported, and misses are marked ("over budget by 4.50",
+   "Black, not Red").
+5. **Rank** - by visual similarity: Qdrant returns the nearest first, so the shortlist is already
+   in CLIP order.
 
 The UI streams each step as it happens. If nothing in the catalogue fits, it says so rather than
 passing off the nearest photos as matches.
@@ -63,51 +66,39 @@ shoes").
 
 | | precision@5 | recall@5 | impossible requests handled | correctly labelled | median time |
 | --- | --- | --- | --- | --- | --- |
-| CLIP nearest neighbours alone | 45% | 63% | 0% | 37% | 0.15s |
-| check & repair, given the right constraints | 62% | 84% | 100% | 100% | 0.15s |
-| rules (the default, no LLM) | 62% | 83% | 100% | 96% | 0.12s |
-| LLM parsing (qwen2.5:7b on Ollama) | 57% | 75% | 100% | 96% | 15.3s |
+| CLIP nearest neighbours alone | 45% | 63% | 0% | 37% | 0.04s |
+| check & repair, given the right constraints | 65% | 88% | 100% | 100% | 0.13s |
+| check & repair, reading requests with the rules (what runs) | 65% | 88% | 100% | 95% | 0.15s |
 
 Recall counts matching products (up to five) that made the shortlist; a request is handled when
 nothing is passed off as a match, and a result is correctly labelled when it's marked as a miss
 exactly when it is one.
 
 CLIP alone always returns five photos, so it never admits a request can't be met - the loop is
-what fixes that. The rules come within a point of being handed the correct constraints. A local 7B
-model read one more query right (89% against 87%) but did worse overall at 15 seconds a search,
-hence rules by default. Recall stops at 84% even with perfect constraints because only the 24
-nearest neighbours get checked; filtering on category and colour inside Qdrant would fix that.
+what fixes that. The rules match the recall of being handed the right constraints, and read 87%
+of the text queries fully right. Category and colour used to be checked only on the 24 nearest
+neighbours, which capped recall at 84% even with perfect constraints; filtering on them inside
+Qdrant took it to 88%.
 
-Vision ranking isn't scored: locally it took minutes a search on a 16 GB laptop, and on
-OpenRouter's free tier it would need about twice the daily limit. In spot checks it judges the photos,
-sometimes harder than asked - it dropped a checked navy shirt from "navy blue shirt".
+An earlier version could hand both jobs to an LLM. A local 7B model (qwen2.5:7b on Ollama) read
+one more query right (89% against 87%) but found fewer matches (75% recall) at 15 seconds a
+search, and a vision model re-ranking the photos took minutes a search on a 16 GB laptop. Neither
+was worth it here, so both were taken out.
 
-Run it with `docker compose exec api python -m scripts.evaluate` (`--no-llm` or `--no-vision` skip
-the model rows).
-
-## Optional LLM
-
-Not needed to run anything. A configured vision model adds one call per search to re-rank;
-`LLM_PARSE=true` adds a second to read the request.
-
-- OpenRouter: set `OPENROUTER_API_KEY` (free at https://openrouter.ai/keys, 50 requests a day).
-  Free model IDs come and go; list the current ones with
-  `curl -s https://openrouter.ai/api/v1/models | jq -r '.data[] | select(.pricing.prompt=="0") | .id'`.
-- Ollama: no key or limit, but slow. `ollama pull qwen2.5vl:7b` (and `qwen2.5:7b` for parsing),
-  then set `OLLAMA_VISION_MODEL` / `OLLAMA_TEXT_MODEL`.
-
-Models that come back missing, rate-limited or unreachable are skipped for five minutes, and if
-they all fail the search finishes with rules and similarity.
+Run it with `docker compose exec api python -m scripts.evaluate`.
 
 ## Catalogue
 
 The 300-item sample (real fashion product photos, invented prices) is committed under `data/` and
-indexes itself on first start. It's a demo catalogue, not real inventory - the point is watching
-the agent work, not buying anything. Product IDs come from the image file names, so re-indexing
-overwrites instead of duplicating.
+indexes itself on first start. The photos, titles, categories and colours come from
+[Fashion Product Images (Small)](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small)
+by Param Aggarwal (MIT licence), via its Hugging Face mirror
+[`ashraq/fashion-product-images-small`](https://huggingface.co/datasets/ashraq/fashion-product-images-small).
+It's a demo catalogue, not real inventory - the point is watching the search work, not buying
+anything. Product IDs come from the image file names, so re-indexing overwrites instead of
+duplicating.
 
-To pull a different sample from the source (fashion products on Hugging Face, no account needed)
-and re-index it:
+To pull a different sample from that mirror (no account needed) and re-index it:
 
 ```bash
 docker compose exec api python -m scripts.fetch_catalogue --limit 300
@@ -124,7 +115,7 @@ folder. There's no write endpoint over HTTP, so the catalogue only changes from 
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/search` | `query` and/or `image`; streams each agent step, then the results |
+| POST | `/search` | `query` and/or `image`; streams each search step, then the results |
 | POST | `/embed` | the model on its own: CLIP vectors for `text` and/or `image`, and their similarity |
 | GET | `/health` | liveness |
 | GET | `/ready` | readiness: Qdrant answers, the catalogue is indexed, the models are loaded |
@@ -151,7 +142,7 @@ them a minute (`RATE_LIMIT_PER_MINUTE`).
   app or Qdrant (which has no auth)
 - dependencies install from the lockfiles, and uv and Qdrant are pinned
 - `.env` is gitignored; `.env.example` carries no real secrets
-- frontend renders catalogue text through React, which escapes it, so catalogue text cannot inject markup
+- the frontend renders catalogue text through React, which escapes it, so it can't inject markup
 
 ## Development
 
@@ -163,7 +154,8 @@ uv run pytest
 uv run uvicorn app.main:app --reload
 ```
 
-Local runs need Qdrant reachable - `docker compose up qdrant` and set `QDRANT_URL=http://localhost:6333`.
+Local runs need Qdrant reachable: `docker compose up qdrant` and set
+`QDRANT_URL=http://localhost:6333`.
 
 ### Frontend
 

@@ -10,20 +10,24 @@ import { Card, PageHeader } from "../components/ui.jsx";
 
 const LOOP = [
   [DocumentTextIcon, "1 · Read", "Rules pull a budget, a colour and a category out of the request, using the catalogue's own labels."],
-  [CircleStackIcon, "2 · Retrieve", "CLIP embeds the text and/or photo; Qdrant returns the 24 nearest products within budget."],
-  [FunnelIcon, "3 · Check", "Category and colour are compared with each product's metadata, word by word."],
+  [FunnelIcon, "2 · Match", "The category and colour become the catalogue labels they name, matched word by word."],
+  [
+    CircleStackIcon,
+    "3 · Retrieve",
+    "CLIP embeds the text and/or photo; Qdrant returns the 24 nearest products that pass every filter.",
+  ],
   [
     WrenchScrewdriverIcon,
     "4 · Repair",
-    "With fewer than five left: colour becomes a soft preference, then the budget widens, then the category goes.",
+    "With fewer than five matches: colour becomes a soft preference, then the budget widens, then the category goes.",
   ],
-  [ArrowsUpDownIcon, "5 · Rank", "By visual similarity, or by a vision model looking at the photos when one is set up."],
+  [ArrowsUpDownIcon, "5 · Rank", "By visual similarity: how close CLIP places each product's photo to the request."],
 ];
 
-// from scripts/evaluate.py on 50 hand-labelled queries - update alongside the README when it's rerun
+// from scripts/evaluate.py; update with the README when it's rerun
 const SCORES = [
   ["CLIP alone", "63%", "0%", "37%"],
-  ["This search loop", "83%", "100%", "96%"],
+  ["This search loop", "88%", "100%", "95%"],
 ];
 
 export default function HowItWorksPage() {

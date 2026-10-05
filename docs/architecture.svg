@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" width="1400" height="900" font-family="Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 900" width="1260" height="900" font-family="Helvetica, Arial, sans-serif">
   <defs>
     <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#333333"/></marker>
     <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#b85450"/></marker>
@@ -8,13 +8,13 @@
     <marker id="ab" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#6c8ebf"/></marker>
   </defs>
 
-  <rect x="0" y="0" width="1400" height="900" fill="#ffffff"/>
+  <rect x="0" y="0" width="1260" height="900" fill="#ffffff"/>
 
-  <text x="60" y="58" font-size="20" font-weight="bold" fill="#1a1a1a">Multimodal Agentic RAG — Visual Product Search</text>
+  <text x="60" y="58" font-size="20" font-weight="bold" fill="#1a1a1a">Visual Product Search — CLIP retrieval with a check-and-repair loop</text>
 
   <rect x="330" y="90" width="380" height="60" rx="6" fill="#dae8fc" stroke="#6c8ebf"/>
   <text x="520" y="112" font-size="13" text-anchor="middle" fill="#1a1a1a">Browser UI</text>
-  <text x="520" y="131" font-size="11" text-anchor="middle" fill="#333333">image upload + text query · results grid · agent trace</text>
+  <text x="520" y="131" font-size="11" text-anchor="middle" fill="#333333">image upload + text query · results list · search trace</text>
 
   <rect x="60" y="180" width="1000" height="690" rx="6" fill="none" stroke="#666666" stroke-dasharray="6 4"/>
   <text x="74" y="202" font-size="13" font-style="italic" fill="#555555">docker-compose</text>
@@ -30,24 +30,24 @@
   <text x="605" y="300" font-size="12" text-anchor="middle" fill="#1a1a1a">POST /search · POST /embed · GET /ready</text>
 
   <rect x="120" y="345" width="650" height="425" rx="6" fill="#fff2cc" stroke="#d6b656"/>
-  <text x="560" y="367" font-size="12" font-weight="bold" fill="#7a6320">Agent loop — max 3 iterations</text>
+  <text x="560" y="367" font-size="12" font-weight="bold" fill="#7a6320">Search loop — max 3 iterations</text>
 
   <rect x="150" y="390" width="230" height="55" rx="6" fill="#d5e8d4" stroke="#82b366"/>
   <text x="265" y="412" font-size="12" text-anchor="middle" fill="#1a1a1a">1 · Read request</text>
-  <text x="265" y="429" font-size="10" text-anchor="middle" fill="#555555">rules · LLM parsing optional</text>
+  <text x="265" y="429" font-size="10" text-anchor="middle" fill="#555555">rules on the catalogue's own labels</text>
 
   <rect x="150" y="475" width="230" height="55" rx="6" fill="#d5e8d4" stroke="#82b366"/>
   <text x="265" y="497" font-size="12" text-anchor="middle" fill="#1a1a1a">2 · Retrieve</text>
   <text x="265" y="514" font-size="10" text-anchor="middle" fill="#555555">vector kNN + payload filter</text>
 
   <rect x="150" y="560" width="230" height="75" rx="6" fill="#d5e8d4" stroke="#82b366"/>
-  <text x="265" y="582" font-size="12" text-anchor="middle" fill="#1a1a1a">3 · Cheap checks — no LLM</text>
+  <text x="265" y="582" font-size="12" text-anchor="middle" fill="#1a1a1a">3 · Check</text>
   <text x="265" y="600" font-size="10" text-anchor="middle" fill="#555555">price, category and colour</text>
   <text x="265" y="616" font-size="10" text-anchor="middle" fill="#555555">matched on indexed metadata</text>
 
-  <rect x="150" y="685" width="230" height="60" rx="6" fill="#ffe6cc" stroke="#d79b00" stroke-dasharray="5 3"/>
+  <rect x="150" y="685" width="230" height="60" rx="6" fill="#d5e8d4" stroke="#82b366"/>
   <text x="265" y="710" font-size="12" text-anchor="middle" fill="#1a1a1a">4 · Rank top 5</text>
-  <text x="265" y="727" font-size="10" text-anchor="middle" fill="#555555">CLIP similarity · optional vision LLM</text>
+  <text x="265" y="727" font-size="10" text-anchor="middle" fill="#555555">CLIP similarity order</text>
 
   <polygon points="460,595 550,545 640,595 550,645" fill="#ffffff" stroke="#666666"/>
   <text x="550" y="591" font-size="12" text-anchor="middle" fill="#1a1a1a">constraints</text>
@@ -67,25 +67,14 @@
   <text x="930" y="543" font-size="10" text-anchor="middle" fill="#555555">payload: price, colour,</text>
   <text x="930" y="558" font-size="10" text-anchor="middle" fill="#555555">category</text>
 
-  <rect x="1130" y="270" width="200" height="100" rx="6" fill="#f8cecc" stroke="#b85450" stroke-dasharray="6 4"/>
-  <text x="1230" y="302" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenRouter / Ollama</text>
-  <text x="1230" y="322" font-size="10" text-anchor="middle" fill="#555555">optional · free tier or local</text>
-  <text x="1230" y="338" font-size="10" text-anchor="middle" fill="#555555">fallbacks · failing models skipped</text>
 
-  <text x="1130" y="432" font-size="11" font-style="italic" fill="#555555">No LLM calls by default; 1 per search</text>
-  <text x="1130" y="448" font-size="11" font-style="italic" fill="#555555">once a vision model is set up (2 with</text>
-  <text x="1130" y="464" font-size="11" font-style="italic" fill="#555555">LLM_PARSE on) — the rest is local</text>
 
-  <rect x="1130" y="600" width="210" height="190" rx="0" fill="none" stroke="#b3b3b3" stroke-dasharray="4 3"/>
-  <text x="1145" y="624" font-size="12" font-weight="bold" fill="#333333">Legend</text>
-  <rect x="1145" y="645" width="18" height="18" fill="#d5e8d4" stroke="#82b366"/>
-  <text x="1172" y="659" font-size="11" fill="#333333">no LLM call</text>
-  <rect x="1145" y="680" width="18" height="18" fill="#ffe6cc" stroke="#d79b00" stroke-dasharray="3 2"/>
-  <text x="1172" y="694" font-size="11" fill="#333333">LLM call (optional)</text>
-  <rect x="1145" y="715" width="18" height="18" fill="#e1d5e7" stroke="#9673a6"/>
-  <text x="1172" y="729" font-size="11" fill="#333333">local service / model</text>
-  <rect x="1145" y="750" width="18" height="18" fill="#f8cecc" stroke="#b85450" stroke-dasharray="3 2"/>
-  <text x="1172" y="764" font-size="11" fill="#333333">external API</text>
+  <rect x="1080" y="680" width="160" height="110" rx="0" fill="none" stroke="#b3b3b3" stroke-dasharray="4 3"/>
+  <text x="1095" y="704" font-size="12" font-weight="bold" fill="#333333">Legend</text>
+  <rect x="1095" y="720" width="18" height="18" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="1122" y="734" font-size="11" fill="#333333">search step (code)</text>
+  <rect x="1095" y="755" width="18" height="18" fill="#e1d5e7" stroke="#9673a6"/>
+  <text x="1122" y="769" font-size="11" fill="#333333">local service / model</text>
 
   <path d="M425,150 L425,245 L265,245 L265,270" fill="none" stroke="#333333" marker-end="url(#a)"/>
   <path d="M410,295 L440,295" fill="none" stroke="#333333" marker-end="url(#a)"/>
@@ -103,8 +92,6 @@
   <text x="640" y="519" font-size="11" text-anchor="middle" fill="#9673a6">kNN + payload filter</text>
   <path d="M150,502 L105,502 L105,807 L120,807" fill="none" stroke="#9673a6" marker-end="url(#ap)"/>
   <text x="112" y="660" font-size="11" fill="#9673a6" transform="rotate(-90 112,660)" text-anchor="middle">embed query</text>
-  <path d="M380,417 L400,417 L400,340 L1090,340 L1090,320 L1130,320" fill="none" stroke="#b85450" stroke-dasharray="6 4" marker-end="url(#ar)"/>
-  <path d="M265,745 L265,765 L1075,765 L1075,345 L1130,345" fill="none" stroke="#b85450" stroke-dasharray="6 4" marker-end="url(#ar)"/>
   <path d="M687,270 L687,170 L615,170 L615,150" fill="none" stroke="#6c8ebf" stroke-dasharray="6 4" marker-end="url(#ab)"/>
-  <text x="700" y="200" font-size="11" fill="#6c8ebf">results + rationale</text>
+  <text x="700" y="200" font-size="11" fill="#6c8ebf">results + trace (streamed)</text>
 </svg>

@@ -11,8 +11,7 @@ from .config import settings
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
-# a 5 MB PNG of one flat colour can claim a 100-megapixel canvas; refuse anything bigger
-# than this before decoding it
+# a small PNG can claim a huge canvas, so check the size before decoding
 MAX_IMAGE_PIXELS = 25_000_000
 
 
@@ -21,12 +20,11 @@ def require_api_key(x_api_key: str = Header(default="")) -> None:
         raise HTTPException(status_code=401, detail="invalid api key")
 
 
-_requests: dict[str, deque] = defaultdict(deque)  # client -> times of its recent requests
+_requests: dict[str, deque] = defaultdict(deque)  # client -> times of recent requests
 
 
 def rate_limit(request: Request) -> None:
-    """Each search runs CLIP on the CPU (and maybe an LLM call), so an unthrottled loop of
-    requests would pin the CPU or burn the free tier's daily quota."""
+    """Each request runs CLIP on the CPU, so cap how many a client can send."""
     allowed = settings().rate_limit_per_minute
     if allowed <= 0:
         return
@@ -47,7 +45,7 @@ async def read_image(file: UploadFile) -> bytes:
     data = await file.read(limit + 1)
     if len(data) > limit:
         raise HTTPException(status_code=413, detail="image too large")
-    # Content-Type is whatever the client claims - check the bytes themselves
+    # don't trust Content-Type, check the bytes
     try:
         with Image.open(BytesIO(data)) as image:
             detected, (width, height) = image.format, image.size
@@ -66,8 +64,8 @@ class _BodyTooLarge(Exception):
 
 
 class BodySizeLimit:
-    """Turns away request bodies over `limit` bytes before anything reads them. Starlette parses
-    a whole multipart upload (spilling it to disk) before an endpoint can check its size."""
+    """Rejects request bodies over `limit` bytes before they are read. Starlette would otherwise
+    read a whole upload before the endpoint can check its size."""
 
     def __init__(self, app, limit: int):
         self.app, self.limit = app, limit
@@ -85,7 +83,7 @@ class BodySizeLimit:
             nonlocal received
             message = await receive()
             received += len(message.get("body", b""))
-            if received > self.limit:  # a chunked body that never declared its length
+            if received > self.limit:  # a chunked body with no declared length
                 raise _BodyTooLarge
             return message
 

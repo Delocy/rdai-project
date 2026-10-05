@@ -1,11 +1,11 @@
 import { CheckCircleIcon, ExclamationTriangleIcon, NoSymbolIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 
-import { nothingFits, onlyNearMisses, rankingLabel, resultDetail } from "../copy.js";
+import { nothingFits, onlyNearMisses, resultDetail } from "../copy.js";
 import { money } from "../format.js";
 import { Badge, Banner, Card, EmptyState } from "./ui.jsx";
 
-// the whole row opens and closes; the title is a real button, so Enter and Space work too
+// the whole row toggles; the title is a real button for keyboard users
 function ResultRow({ item, requested }) {
   const [open, setOpen] = useState(false);
 
@@ -62,7 +62,7 @@ export default function ResultsCard({ response }) {
     );
   }
 
-  const { results, requested, constraints, ranker } = response;
+  const { results, requested, constraints } = response;
   const title = (
     <>
       Results <span className="count">{results.length}</span>
@@ -80,7 +80,7 @@ export default function ResultsCard({ response }) {
   }
 
   return (
-    <Card title={title} aside={<span className="subdued">{rankingLabel(ranker)}</span>}>
+    <Card title={title} aside={<span className="subdued">Ranked by visual similarity</span>}>
       {onlyNearMisses(results) ? (
         <Banner tone="warning" icon={ExclamationTriangleIcon} className="results-banner">
           Nothing matches everything you asked for. These are the closest, and each one says how it's different.

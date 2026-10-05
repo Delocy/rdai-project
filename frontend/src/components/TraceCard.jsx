@@ -4,7 +4,6 @@ import {
   ChevronUpIcon,
   ClockIcon,
   DocumentTextIcon,
-  ExclamationTriangleIcon,
   FunnelIcon,
   NoSymbolIcon,
   WrenchScrewdriverIcon,
@@ -19,7 +18,6 @@ const ICONS = {
   search: FunnelIcon,
   repair: WrenchScrewdriverIcon,
   stop: NoSymbolIcon,
-  warn: ExclamationTriangleIcon,
   other: DocumentTextIcon,
 };
 

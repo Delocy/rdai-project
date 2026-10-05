@@ -5,12 +5,11 @@ from contextlib import asynccontextmanager
 import numpy as np
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import store
-from .agent.loop import run
+from .search.loop import run
 from .config import settings
 from .embeddings import VECTOR_SIZE, embed_image, embed_text, warm_up
 from .embeddings import loaded as models_loaded
@@ -25,9 +24,7 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     store.ensure_collection()
-    # first run against a fresh Qdrant (or one stopped part-way through): index
-    # whatever of the sample catalogue is missing, so `docker compose up --build`
-    # alone is enough to get real search results, with no separate ingest command
+    # index whatever of the sample catalogue is missing, so `docker compose up` alone works
     if CATALOGUE.is_file():
         try:
             total = seed_missing(CATALOGUE, IMAGES)
@@ -40,30 +37,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Visual Product Search", lifespan=lifespan)
-# turn oversized uploads away before they're read; the margin covers the form around the image
+# reject oversized uploads before reading them; the margin covers the rest of the form
 app.add_middleware(BodySizeLimit, limit=settings().max_upload_bytes + 64 * 1024)
-
-# empty by default (same-origin dev/Docker); set when the frontend is deployed
-# as a separate origin, e.g. a standalone Vercel project
-if settings().cors_origin_list:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings().cors_origin_list,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Liveness: the process is up. /ready says whether it can actually serve searches."""
+    """Liveness check."""
     return {"status": "ok"}
 
 
 @app.get("/ready")
 def ready() -> JSONResponse:
-    """Readiness, for the compose healthcheck: Qdrant answers, the catalogue is indexed and
-    both models are loaded."""
+    """Readiness for the compose healthcheck: Qdrant is up, the catalogue is indexed and
+    the models are loaded."""
     try:
         products = store.count()
     except Exception:
@@ -84,8 +71,7 @@ async def embed(
     text: str = Form(default=""),
     image: UploadFile | None = File(default=None),
 ) -> Embedding:
-    """The model on its own: CLIP's 512-number unit vector for the text and/or the image,
-    and their cosine similarity when both are given."""
+    """CLIP vectors for the text and/or image, and their cosine similarity when both are given."""
     if not text.strip() and image is None:
         raise HTTPException(status_code=400, detail="provide text, an image, or both")
     data = await read_image(image) if image else None
@@ -106,10 +92,8 @@ async def search(
     query: str = Form(default=""),
     image: UploadFile | None = File(default=None),
 ) -> StreamingResponse:
-    """Streams newline-delimited JSON: one {"type": "step", "step": Step} line
-    per agent step as it happens, then a final {"type": "done", "response":
-    SearchResponse} (or {"type": "error", "detail": str} if it crashes
-    mid-stream, since headers are already sent by then)."""
+    """Streams one JSON line per search step, then a "done" line with the results, or an
+    "error" line if it fails partway."""
     if not query.strip() and image is None:
         raise HTTPException(status_code=400, detail="provide a query, an image, or both")
     data = await read_image(image) if image else None
@@ -122,7 +106,7 @@ async def search(
                 else:
                     yield json.dumps({"type": "done", "response": item.model_dump()}) + "\n"
         except Exception:
-            # the details stay in the server log - they can name internal hosts and paths
+            # details stay in the server log, since they can name internal hosts and paths
             log.exception("search failed")
             yield json.dumps({"type": "error", "detail": "search failed - see the server log"}) + "\n"
 
@@ -132,7 +116,7 @@ async def search(
 try:
     IMAGES.mkdir(parents=True, exist_ok=True)
 except OSError:
-    pass 
+    pass
 else:
     app.mount("/images", StaticFiles(directory=IMAGES), name="images")
 

@@ -1,8 +1,6 @@
-// Plain-language text for the UI: pure functions over the API's response shapes, so every
-// sentence a shopper sees is unit-tested (`npm test`).
+// Every sentence the UI builds from a search, as pure functions covered by npm test.
 
-// "$30", "$62.50" - whole amounts lose their cents in sentences. Halves round to even, like the
-// server's own two-decimal formatting, so the trace and the banners show the same budget.
+// "$30", "$62.50". Halves round to even like Python does, so the trace and banners agree.
 export function amount(value) {
   const scaled = Number(value) * 100;
   let cents = Math.round(scaled);
@@ -10,17 +8,13 @@ export function amount(value) {
   return cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`;
 }
 
-// "pink tops under $30" - the request in a shopper's words
+// "pink tops under $30"
 export function requestPhrase(requested) {
   const words = [];
   if (requested.colour) words.push(requested.colour.toLowerCase());
   words.push(requested.category ? requested.category.toLowerCase() : "items");
   if (requested.price_max != null) words.push(`under ${amount(requested.price_max)}`);
   return words.join(" ");
-}
-
-export function rankingLabel(ranker) {
-  return ranker === "llm" ? "Ranked by a vision model" : "Ranked by visual similarity";
 }
 
 function capitalise(text) {
@@ -36,9 +30,8 @@ export function missSentence(miss) {
   return `${capitalise(miss)}.`;
 }
 
-// what an opened result says: the model's reason, why a near-miss is shown at all, or that it fits
+// the detail line of an opened result
 export function resultDetail(item, requested) {
-  if (item.rationale) return item.rationale;
   if (item.misses.length) {
     const misses = item.misses.map(missSentence).join(" ");
     return `${misses} Shown because there aren't enough ${requestPhrase(requested)}.`;
@@ -55,7 +48,7 @@ export function nothingFits(requested, applied) {
   return "Try a broader request.";
 }
 
-// every result misses something, so the Results card says so up front
+// true when every result misses something
 export function onlyNearMisses(results) {
   return results.length > 0 && results.every((item) => item.misses.length > 0);
 }
@@ -91,38 +84,25 @@ function repairStep(detail) {
   return step("repair", "Relaxed the search", detail);
 }
 
-// the agent's steps in plain words; `kind` picks the icon and colour in the Trace card.
-// The backend's step names stay technical (its tests and the eval rely on them).
+// the search steps in plain words; `kind` picks the icon
 export function describeSteps(steps, { withPhoto = false } = {}) {
   let searches = 0;
   return steps.map(({ action, detail = "", kept = 0 }) => {
     if (action.startsWith("read request")) return step("read", "Read your request", readDetail(detail, withPhoto));
     if (action === "retrieve + check") {
       searches += 1;
-      const retrieved = Number.parseInt(detail, 10);
-      const found = kept ? `${kept} fit` : "none fit";
-      const label = searches === 1 ? "Searched" : "Searched again";
-      return step("search", label, Number.isNaN(retrieved) ? found : `${retrieved} closest products · ${found}`);
+      // matches across the whole catalogue, which can be more than were retrieved
+      const total = Number.parseInt(detail, 10);
+      const fit = Number.isNaN(total) ? kept : total;
+      const found = fit === 0 ? "none fit" : fit === 1 ? "1 product fits" : `${fit} products fit`;
+      return step("search", searches === 1 ? "Searched" : "Searched again", found);
     }
     if (action === "repair") return repairStep(detail);
     if (action === "derive budget") {
       const cap = detail.match(/cap ([\d.]+)/);
       return step("repair", "Set a budget", cap ? `cheaper than the closest match: under ${amount(cap[1])}` : detail);
     }
-    if (action === "dropped weak matches") {
-      const dropped = Number.parseInt(detail, 10);
-      return step("stop", "Removed weak matches", `${Number.isNaN(dropped) ? "Some" : dropped} didn't really fit`);
-    }
     if (action === "no match") return step("stop", "Nothing fit");
-    if (action === "parse unavailable") {
-      return step("warn", "Couldn't use the AI to read your request", "used the built-in rules instead");
-    }
-    if (action === "ranking unavailable") {
-      return step("warn", "Smart ranking unavailable", "sorted by visual similarity instead");
-    }
-    if (action === "image embedding unavailable") {
-      return step("warn", "Couldn't read your photo", "searched with your words only");
-    }
     return step("other", action, detail);
   });
 }
@@ -131,7 +111,7 @@ export function liveLabel(steps) {
   return steps.some(({ action }) => action === "retrieve + check") ? "Searching again" : "Searching";
 }
 
-// how many fit in the search just before the repair whose note starts with `prefix`
+// how many fit in the search before the repair named by `prefix`
 function keptBefore(steps, prefix) {
   let kept = 0;
   for (const { action, detail = "", kept: count = 0 } of steps) {
@@ -141,8 +121,8 @@ function keptBefore(steps, prefix) {
   return 0;
 }
 
-// what the search relaxed to find anything, for the "Understood as" banner; null when nothing was.
-// pointAtResults is false when there are no results, or the Results card already says each is marked
+// what the search relaxed, for the Understood as banner (null if nothing). pointAtResults
+// is false with no results, or when the Results card already says it
 export function relaxedNote(requested, applied, steps, pointAtResults = true) {
   const sentences = [];
   const kind = requested.category ? requested.category.toLowerCase() : "items";
@@ -164,17 +144,6 @@ export function relaxedNote(requested, applied, steps, pointAtResults = true) {
   if (!sentences.length) return null;
   if (pointAtResults) sentences.push("Each one says how it's different.");
   return sentences.join(" ");
-}
-
-const FALLBACKS = [
-  ["parse unavailable", "The AI couldn't read your request, so the built-in rules were used."],
-  ["ranking unavailable", "Smart ranking isn't available right now, so results are sorted by how similar they look."],
-  ["image embedding unavailable", "Your photo couldn't be read, so this searched with your words only."],
-];
-
-// one sentence per fallback a degraded search took
-export function fallbackNotes(steps) {
-  return FALLBACKS.filter(([action]) => steps.some((step) => step.action === action)).map(([, text]) => text);
 }
 
 export function errorMessage(error) {

@@ -1,11 +1,9 @@
-// Vite replaces import.meta.env at build time; under `node --test` it doesn't exist
-const env = import.meta.env ?? {};
-const API_URL = env.VITE_API_URL ?? "";
-const API_KEY = env.VITE_API_KEY ?? "";
+// Vite fills in import.meta.env at build time; it's missing under node --test
+const API_KEY = (import.meta.env ?? {}).VITE_API_KEY ?? "";
 
 const STOPPED = "the search stopped partway through";
 
-// what went wrong talking to the API; status 0 means no response came back at all
+// status 0 means there was no response at all
 export class ApiError extends Error {
   constructor(status, detail, retryAfter = null) {
     super(detail);
@@ -15,9 +13,8 @@ export class ApiError extends Error {
   }
 }
 
-// /search streams newline-delimited JSON: a {"type":"step",...} line per
-// agent step as it happens, then a final {"type":"done","response":...}.
-// onStep fires for each step so the caller can show live progress.
+// /search streams one JSON line per step, then a "done" line with the results.
+// onStep is called for each step as it arrives.
 export async function search({ query, image, onStep }) {
   const body = new FormData();
   body.append("query", query);
@@ -25,7 +22,7 @@ export async function search({ query, image, onStep }) {
 
   let response;
   try {
-    response = await fetch(`${API_URL}/search`, {
+    response = await fetch("/search", {
       method: "POST",
       headers: { "X-API-Key": API_KEY },
       body,
@@ -38,7 +35,7 @@ export async function search({ query, image, onStep }) {
     let detail = response.statusText;
     try {
       const error = await response.json();
-      // FastAPI's validation errors put a list here; keep the status text for those
+      // FastAPI validation errors send a list here, so keep the status text
       if (typeof error.detail === "string") detail = error.detail;
     } catch {
       /* non-json error body */
@@ -71,7 +68,7 @@ export async function search({ query, image, onStep }) {
       }
     }
   } catch (error) {
-    // the server answered, then the stream broke off or went wrong
+    // the stream broke off or sent an error
     throw error instanceof ApiError ? error : new ApiError(500, STOPPED);
   }
 

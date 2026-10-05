@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button, Card } from "./ui.jsx";
 
-// matched to the sample catalogue: the first group has real matches, the others don't
-// (no red sports shoes under $40, no sunglasses under $50) to show the repair and the "no" answer
+// picked for the sample catalogue: "Repairs" and "No match" show the loop relaxing and giving up
 export const EXAMPLES = [
   { label: "Try", queries: ["black watch", "white sneakers", "brown handbag", "pink top under 30"] },
   { label: "Repairs", queries: ["red running shoes under 40"] },
@@ -14,8 +13,7 @@ export const EXAMPLES = [
 export default function SearchCard({ query, setQuery, image, setImage, onSearch, busy }) {
   const fileRef = useRef(null);
   const [dropping, setDropping] = useState(false);
-  // the preview remembers which photo it belongs to: a new photo can render before its own
-  // preview exists, and must not show the previous one's URL, which is revoked by then
+  // keep each preview URL with its file so a new photo never shows the old, revoked one
   const [thumb, setThumb] = useState(null);
 
   useEffect(() => {
@@ -38,13 +36,14 @@ export default function SearchCard({ query, setQuery, image, setImage, onSearch,
           setDropping(true);
         }}
         onDragLeave={(event) => {
-          // moving onto a child fires dragleave too; only count leaving the card
+          // dragleave also fires when moving onto a child
           if (!event.currentTarget.contains(event.relatedTarget)) setDropping(false);
         }}
         onDrop={(event) => {
           event.preventDefault();
           setDropping(false);
-          take(event.dataTransfer.files[0]);
+          // keep the current photo until the running search finishes
+          if (!busy) take(event.dataTransfer.files[0]);
         }}
       >
         <form
@@ -68,7 +67,13 @@ export default function SearchCard({ query, setQuery, image, setImage, onSearch,
             <span className="photo-chip">
               {thumb?.file === image ? <img src={thumb.url} alt="" /> : null}
               <span className="photo-name">{image.name}</span>
-              <button type="button" className="chip-remove" onClick={() => setImage(null)} aria-label="Remove photo">
+              <button
+                type="button"
+                className="chip-remove"
+                onClick={() => setImage(null)}
+                disabled={busy}
+                aria-label="Remove photo"
+              >
                 <XMarkIcon className="icon" aria-hidden="true" />
               </button>
             </span>

@@ -51,13 +51,8 @@ def main() -> None:
     parser.add_argument(
         "--image-base-url",
         default=DEFAULT_IMAGE_BASE_URL,
-        help=(
-            "base URL the downloaded images will be reachable at once committed "
-            "(e.g. a raw.githubusercontent.com path) - the dataset's own hosted "
-            "URLs are signed and expire within ~a day, so they're not usable as "
-            "a lasting image_url. Pass '' to fall back to the (short-lived) "
-            "source URL instead."
-        ),
+        help="where the committed images will be served from; the dataset's own URLs expire "
+        "within a day. '' keeps those anyway",
     )
     args = parser.parse_args()
 

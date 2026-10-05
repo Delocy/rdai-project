@@ -1,5 +1,5 @@
-"""Reads a budget ("under 40"), a colour, a category and "cheaper" wording out of a request,
-using the catalogue's own labels. The default parser - no model needed."""
+"""Reads a budget ("under 40"), a colour, a category and "cheaper" wording from a request,
+using the catalogue's own labels."""
 
 import re
 
@@ -18,7 +18,7 @@ BUDGET = re.compile(
 CHEAPER = re.compile(r"\b(?:cheaper|less expensive|more affordable|lower[- ]priced?)\b", re.IGNORECASE)
 FILLER = re.compile(r"\b(?:something like this|similar to this|like this|similar|but)\b", re.IGNORECASE)
 
-# read as a colour even when the catalogue has none, so results get flagged as not that colour
+# kept even when the catalogue lacks the colour, so results are flagged as the wrong one
 COMMON_COLOURS = [
     "black", "white", "grey", "silver", "gold", "red", "orange", "yellow", "green", "blue", "navy",
     "purple", "violet", "pink", "brown", "beige", "cream", "maroon", "teal", "turquoise", "olive",
@@ -43,7 +43,7 @@ def parse(text: str, categories: list[str], colours: list[str]) -> Constraints:
 
 
 def _intent(rest: str) -> str:
-    """What the item is, for the embedding probe - without budget or comparison words."""
+    """The item itself, for the embedding probe, without budget or comparison words."""
     cleaned = FILLER.sub(" ", CHEAPER.sub(" ", rest))
     return " ".join(re.sub(r"[^\w\s'-]", " ", cleaned).split())
 
@@ -55,8 +55,8 @@ def _label_words(label: str) -> list[str]:
 def _category(tokens: list[str], labels: list[str]) -> str | None:
     present = set(tokens)
 
-    # a label whose every word is in the query: the most specific one, then the one named
-    # last (the head noun - "denim jacket" is a jacket)
+    # labels whose words all appear in the query: the most specific wins, then the one
+    # named last ("denim jacket" is a jacket)
     complete = [label for label in labels if _label_words(label) and set(_label_words(label)) <= present]
     if complete:
         return max(
@@ -67,7 +67,7 @@ def _category(tokens: list[str], labels: list[str]) -> str | None:
             ),
         )
 
-    # a word that ends one or more labels: "shoes" covers Casual, Sports and Formal Shoes
+    # a word that ends several labels, e.g. "shoes" for every kind of shoe
     for word in reversed(tokens):
         heads = [label for label in labels if _label_words(label)[-1:] == [word]]
         if len(heads) == 1:
@@ -75,7 +75,7 @@ def _category(tokens: list[str], labels: list[str]) -> str | None:
         if heads:
             return word.capitalize() + "s"
 
-    # a word only one label contains, e.g. "perfume" for "Perfume and Body Mist"
+    # a word only one label contains, e.g. "perfume"
     for word in reversed(tokens):
         holders = [label for label in labels if word in _label_words(label)]
         if len(holders) == 1:
@@ -85,7 +85,7 @@ def _category(tokens: list[str], labels: list[str]) -> str | None:
 
 def _colour(tokens: list[str], labels: list[str]) -> str | None:
     extra = [name for name in COMMON_COLOURS if not any(words(name) == words(label) for label in labels)]
-    # longest names first so "Navy Blue" beats "Blue", and the catalogue's own labels first
+    # longest first so "Navy Blue" beats "Blue", catalogue labels before common ones
     for name in sorted(labels + extra, key=lambda name: (-len(words(name)), name not in labels)):
         wanted = words(name)
         if any(tokens[i : i + len(wanted)] == wanted for i in range(len(tokens))):

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { errorMessage, fallbackNotes, relaxedNote } from "../src/copy.js";
+import { errorMessage, relaxedNote } from "../src/copy.js";
 
-const search = (kept) => ({ action: "retrieve + check", detail: "24 retrieved, rejected {}", kept });
+const search = (kept) => ({ action: "retrieve + check", detail: `${kept} matching products in the catalogue`, kept });
 const repair = (detail) => ({ action: "repair", detail });
 const pinkTops = { category: "Tops", colour: "Pink", price_max: 30 };
 
@@ -61,17 +61,6 @@ test("the banner doesn't point at results that aren't there", () => {
     relaxedNote(sunglasses, { ...sunglasses, price_max: 78.125 }, trace, false),
     "Nothing fit under $50, so the budget was raised to $78.12.",
   );
-});
-
-test("each fallback gets one plain sentence", () => {
-  assert.deepEqual(fallbackNotes([{ action: "ranking unavailable" }]), [
-    "Smart ranking isn't available right now, so results are sorted by how similar they look.",
-  ]);
-  assert.deepEqual(fallbackNotes([{ action: "parse unavailable" }, { action: "image embedding unavailable" }]), [
-    "The AI couldn't read your request, so the built-in rules were used.",
-    "Your photo couldn't be read, so this searched with your words only.",
-  ]);
-  assert.deepEqual(fallbackNotes([{ action: "retrieve + check" }]), []);
 });
 
 test("errors read as plain sentences", () => {

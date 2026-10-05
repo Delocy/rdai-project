@@ -7,7 +7,7 @@ import SearchCard from "../components/SearchCard.jsx";
 import TraceCard from "../components/TraceCard.jsx";
 import UnderstoodCard from "../components/UnderstoodCard.jsx";
 import { Banner, Card, EmptyState, PageHeader } from "../components/ui.jsx";
-import { errorMessage, fallbackNotes } from "../copy.js";
+import { errorMessage } from "../copy.js";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -28,7 +28,7 @@ export default function SearchPage() {
   }, [busy]);
 
   async function run(text = query) {
-    // a ref, not state: two clicks in the same tick must not start two searches
+    // a ref, not state, so two clicks in one tick can't start two searches
     if (running.current || (!text.trim() && !image)) return;
     running.current = true;
     started.current = Date.now();
@@ -57,24 +57,18 @@ export default function SearchPage() {
 
   const message = error ? errorMessage(error) : null;
   const messageIcon = error?.status === 429 ? ClockIcon : message?.tone === "critical" ? XCircleIcon : ExclamationTriangleIcon;
-  const fallbacks = response?.degraded ? fallbackNotes(response.trace) : [];
   const begun = busy || response !== null || steps.length > 0;
 
   return (
     <div className="page-body">
       <PageHeader
         title="Search"
-        subtitle="Describe a product, add a photo, or both. The agent checks its own results and says when nothing fits."
+        subtitle="Describe a product, add a photo, or both."
       />
       <SearchCard query={query} setQuery={setQuery} image={image} setImage={setImage} onSearch={run} busy={busy} />
       {message ? (
         <Banner tone={message.tone} icon={messageIcon}>
           {message.text}
-        </Banner>
-      ) : null}
-      {fallbacks.length ? (
-        <Banner tone="warning" icon={ExclamationTriangleIcon}>
-          {fallbacks.join(" ")}
         </Banner>
       ) : null}
       {begun ? (

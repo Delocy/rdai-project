@@ -33,7 +33,7 @@ export default function App() {
           ))}
         </nav>
         <main className="page">
-          {/* both stay mounted, so a search survives a visit to How it works */}
+          {/* both stay mounted so a search survives visiting How it works */}
           <div hidden={route !== "search"}>
             <SearchPage />
           </div>

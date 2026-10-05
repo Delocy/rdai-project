@@ -1,5 +1,4 @@
-// catalogue prices are invented and unit-less; shown in dollars to match how queries
-// phrase budgets ("under 50")
+// prices are invented and unit-less, shown in dollars because budgets are typed that way
 export function money(value) {
   return `$${Number(value).toFixed(2)}`;
 }

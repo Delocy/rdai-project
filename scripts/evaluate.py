@@ -1,35 +1,24 @@
-"""Scores the search agent on hand-labelled queries against the sample catalogue.
+"""Scores the search on the hand-labelled queries in eval_cases.json.
 
-Each case in eval_cases.json says what a correct result looks like (category, colour,
-budget). The catalogue decides whether any such product exists, so a case with no
-possible match tests that the agent says so instead of passing off near misses.
+Each case says what a correct result looks like. Cases with no possible match check that
+the search says so instead of passing off near misses. The rows add one stage at a time:
+CLIP alone, the loop given the right constraints, then the loop reading requests itself.
 
-The rows build the pipeline up one stage at a time: plain CLIP retrieval; the
-check/repair loop handed the right constraints; the loop reading requests with its rules
-(the default - no LLM); then with an LLM ranking results, parsing requests, or both.
-
-    python -m scripts.evaluate              # every row, using whichever LLMs the env configures
-    python -m scripts.evaluate --no-vision  # skip the vision-ranking rows (slow on local models)
-    python -m scripts.evaluate --no-llm     # only the rows that need no model
+    python -m scripts.evaluate
 """
 
-import argparse
 import json
 import statistics
 import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
 
 from app import store
-from app.agent import loop
-from app.agent.checks import apply, loosely_matches, words
-from app.agent.justify import justify
-from app.agent.parse import parse_query, read_rules
-from app.config import settings
-from app.llm import TEXT
+from app.search import loop
+from app.search.checks import apply, loosely_matches, words
+from app.search.parse import read_rules
 from app.paths import CATALOGUE, IMAGES
 from app.schemas import Candidate, Constraints
 from app.seed import rows
@@ -67,10 +56,9 @@ class Tally:
     recall: list[float] = field(default_factory=list)  # ...share of those matches shown
     impossible_handled: list[bool] = field(default_factory=list)  # cases with none
     returned: int = 0
-    # results whose miss badges lie: a miss shown without one, or a fit flagged as a miss
+    # results whose miss badges are wrong either way
     mislabelled: int = 0
     seconds: list[float] = field(default_factory=list)
-    degraded: int = 0
 
 
 def load_cases() -> tuple[list[Case], set[str]]:
@@ -97,7 +85,7 @@ def load_cases() -> tuple[list[Case], set[str]]:
 
 @contextmanager
 def swapped(target, **replacements):
-    """Temporarily replace attributes, e.g. the parser the agent loop calls."""
+    """Temporarily replace attributes, e.g. the loop's parser."""
     saved = {name: getattr(target, name) for name in replacements}
     for name, value in replacements.items():
         setattr(target, name, value)
@@ -108,47 +96,18 @@ def swapped(target, **replacements):
             setattr(target, name, value)
 
 
-@lru_cache(maxsize=None)
-def llm_parsed(text: str) -> Constraints:
-    # shared by the rows that parse with the LLM, so each query costs one call
-    return parse_query(text)
-
-
-_rankings: dict[tuple, list[tuple[str, str | None]]] = {}
-
-
-def ranked_once(request: str, candidates: list[Candidate], image: bytes | None = None) -> list[Candidate]:
-    """The vision model's ranking, reused when another row hands it the same shortlist."""
-    key = (request, tuple(c.id for c in candidates), hash(image))
-    if key not in _rankings:
-        ranked = justify(request, [c.model_copy() for c in candidates], image)
-        _rankings[key] = [(c.id, c.rationale) for c in ranked]
-    by_id = {c.id: c for c in candidates}
-    out = []
-    for id, rationale in _rankings[key]:
-        by_id[id].rationale = rationale
-        out.append(by_id[id])
-    return out
-
-
-def clip_only(case: Case) -> tuple[list[Candidate], bool]:
+def clip_only(case: Case) -> list[Candidate]:
     vector = loop.query_vector(case.query, case.image, Constraints(intent=case.query))
     kept, _ = apply(store.search(vector, K), Constraints())
-    return kept, False
+    return kept
 
 
-def agent(oracle: bool = False, parse_by_llm: bool = False, rank_by_llm: bool = False):
-    def search(case: Case) -> tuple[list[Candidate], bool]:
-        replacements = {
-            "configured": lambda kind: parse_by_llm if kind == TEXT else rank_by_llm,
-            "parse_query": llm_parsed,
-            "justify": ranked_once,
-        }
-        if oracle:
-            replacements["read_rules"] = lambda text: case.constraints()
-        with swapped(loop, **replacements), swapped(settings(), llm_parse=parse_by_llm):
+def search_loop(oracle: bool = False):
+    def search(case: Case) -> list[Candidate]:
+        replacements = {"read_rules": lambda text, vocabulary=None: case.constraints()} if oracle else {}
+        with swapped(loop, **replacements):
             response = list(loop.run(case.query, case.image))[-1]
-        return response.results, response.degraded
+        return response.results
 
     return search
 
@@ -159,9 +118,8 @@ def evaluate(cases: list[Case], system) -> Tally:
         label = case.query or "(image only)"
         print(f"  [{number}/{len(cases)}] {label}", file=sys.stderr, flush=True)
         started = time.perf_counter()
-        results, degraded = system(case)
+        results = system(case)
         tally.seconds.append(time.perf_counter() - started)
-        tally.degraded += degraded
 
         top = results[:K]
         fits = [case.fits(item.category, item.colour, item.price) for item in top]
@@ -191,10 +149,7 @@ def parse_accuracy(cases: list[Case], categories: set[str], parse) -> dict[str, 
     for case in cases:
         if case.image:  # what the photo shows isn't the parser's job
             continue
-        try:
-            got = parse(case.query)
-        except RuntimeError:
-            got = Constraints()
+        got = parse(case.query)
         checks = {
             "category": category_ok(got.category, case.categories),
             "colour": loosely_matches(case.colour, got.colour) if case.colour else got.colour is None,
@@ -215,35 +170,15 @@ def percent(values: list) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="score the search agent on labelled queries")
-    parser.add_argument("--no-llm", action="store_true", help="skip the rows that call an LLM")
-    parser.add_argument("--no-vision", action="store_true", help="skip the rows where a vision LLM ranks")
-    args = parser.parse_args()
-
     cases, categories = load_cases()
     systems = [
         ("CLIP nearest neighbours", clip_only),
-        ("check & repair, handed the right constraints", agent(oracle=True)),
-        ("**rules - the default, no LLM**", agent()),
+        ("check & repair, handed the right constraints", search_loop(oracle=True)),
+        ("**check & repair, reading requests with the rules**", search_loop()),
     ]
-    if not args.no_llm:
-        systems.append(("LLM parsing", agent(parse_by_llm=True)))
-        if not args.no_vision:
-            systems += [
-                ("rules + vision LLM ranking", agent(rank_by_llm=True)),
-                ("LLM parsing + vision LLM ranking", agent(parse_by_llm=True, rank_by_llm=True)),
-            ]
 
     possible = sum(1 for case in cases if case.possible)
     print(f"{len(cases)} cases: {possible} with a possible match, {len(cases) - possible} without")
-    if not args.no_llm:
-        cfg = settings()
-        llms = []
-        if cfg.openrouter_api_key:
-            llms.append(f"OpenRouter {cfg.text_models} / {cfg.vision_models}")
-        if cfg.ollama_text_model or cfg.ollama_vision_model:
-            llms.append(f"Ollama {cfg.ollama_text_model} / {cfg.ollama_vision_model}")
-        print("LLMs (text / vision):", "; then ".join(llms) or "none configured")
     print()
     print(f"| | precision@{K} | recall@{K} | impossible requests handled | correctly labelled | median time |")
     print("|---|---|---|---|---|---|")
@@ -251,19 +186,16 @@ def main() -> None:
         print(name, file=sys.stderr, flush=True)
         tally = evaluate(cases, system)
         labelled = 1 - tally.mislabelled / tally.returned if tally.returned else 1.0
-        note = f" ({tally.degraded} degraded)" if tally.degraded else ""
         print(
-            f"| {name}{note} | {percent(tally.precision)} | {percent(tally.recall)} "
+            f"| {name} | {percent(tally.precision)} | {percent(tally.recall)} "
             f"| {percent(tally.impossible_handled)} | {labelled:.0%} | {statistics.median(tally.seconds):.2f}s |",
             flush=True,
         )
 
     print()
-    print("parse accuracy on the text queries (category, colour, budget all right):")
-    parsers = [("rules", read_rules)] + ([] if args.no_llm else [("LLM", llm_parsed)])
-    for name, parse in parsers:
-        accuracy = parse_accuracy(cases, categories, parse)
-        print(f"  {name}: " + ", ".join(f"{k} {v:.0%}" for k, v in accuracy.items()))
+    print("rules parse accuracy on the text queries (category, colour, budget all right):")
+    accuracy = parse_accuracy(cases, categories, read_rules)
+    print("  " + ", ".join(f"{k} {v:.0%}" for k, v in accuracy.items()))
 
 
 if __name__ == "__main__":

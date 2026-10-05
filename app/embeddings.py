@@ -1,17 +1,5 @@
-import os
-import tempfile
 from functools import lru_cache
 from io import BytesIO
-
-# huggingface_hub's xet download backend writes here regardless of the
-# cache_dir passed to fastembed, defaulting to $HOME/.cache/huggingface —
-# not writable on read-only filesystems like Vercel's. Must be set before
-# fastembed (and therefore huggingface_hub) is imported.
-os.environ.setdefault("HF_HOME", os.path.join(tempfile.gettempdir(), "hf_home"))
-# xet stages a second copy of each file mid-download on top of the final
-# cached copy, roughly doubling peak disk use - not worth it against hosts
-# with a small /tmp (e.g. Vercel's 500MB cap)
-os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 
 import numpy as np
 from fastembed import ImageEmbedding, TextEmbedding
@@ -33,8 +21,8 @@ def _texts() -> TextEmbedding:
 
 
 def warm_up() -> None:
-    """Load both models at startup so the first search doesn't wait. One that fails here
-    (e.g. a host with a small /tmp) still gets its usual chance on first use."""
+    """Load both models at startup so the first search doesn't wait. A failed load is
+    retried on first use."""
     for load in (_texts, _images):
         try:
             load()
@@ -52,7 +40,7 @@ def embed_image(data: bytes) -> np.ndarray:
 
 
 def embed_image_paths(paths: list[str]) -> list[np.ndarray]:
-    # one ONNX run for the whole batch - about twice as fast as a path at a time
+    # one ONNX run per batch, about twice as fast as one image at a time
     return [_unit(vector) for vector in _images().embed(paths, batch_size=max(len(paths), 1))]
 
 

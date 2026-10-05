@@ -14,7 +14,7 @@ export default function UnderstoodCard({ response, withPhoto }) {
     ["Max price", requested.price_max != null ? money(requested.price_max) : null],
     ["Cheaper than", requested.relative_cheaper ? (withPhoto ? "your photo" : "the closest match") : null],
   ].filter(([, value]) => value);
-  // the Results card already says each result is marked when none of them fully match
+  // no pointer when the Results card already says it
   const note = relaxedNote(requested, constraints, trace, results.length > 0 && !onlyNearMisses(results));
 
   return (

@@ -1,6 +1,6 @@
 import pytest
 
-from app.agent import rules
+from app.search import rules
 
 CATEGORIES = [
     "Casual Shoes", "Sports Shoes", "Formal Shoes", "Shoe Accessories", "Tshirts", "Shirts",

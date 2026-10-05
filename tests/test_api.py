@@ -11,7 +11,7 @@ from app import main, security
 from app.config import settings
 from app.schemas import Constraints, SearchResponse, Step
 
-# not entered as a context manager, so startup (Qdrant, seeding) never runs
+# no context manager, so startup (Qdrant, seeding) never runs
 client = TestClient(main.app)
 
 
@@ -41,8 +41,8 @@ def no_rate_limit(monkeypatch):
 
 
 @pytest.fixture
-def agent(monkeypatch) -> list:
-    """Swaps the agent loop for a scripted one; returns the (text, image) it was called with."""
+def search_loop(monkeypatch) -> list:
+    """Replaces the search loop with a scripted one and records what it was called with."""
     calls = []
 
     def scripted(text, image):
@@ -58,18 +58,18 @@ def test_health():
     assert client.get("/health").json() == {"status": "ok"}
 
 
-def test_search_needs_the_api_key(agent):
+def test_search_needs_the_api_key(search_loop):
     assert client.post("/search", data={"query": "blue shirt"}).status_code == 401
     wrong = {"X-API-Key": "wrong"}
     assert client.post("/search", data={"query": "blue shirt"}, headers=wrong).status_code == 401
-    assert agent == []
+    assert search_loop == []
 
 
-def test_search_needs_a_query_or_an_image(agent):
+def test_search_needs_a_query_or_an_image(search_loop):
     assert client.post("/search", data={"query": "  "}, headers=key()).status_code == 400
 
 
-def test_search_streams_each_step_then_the_result(agent):
+def test_search_streams_each_step_then_the_result(search_loop):
     response = client.post("/search", data={"query": "blue shirt"}, headers=key())
     assert response.headers["content-type"].startswith("application/x-ndjson")
     assert [event["type"] for event in events(response)] == ["step", "done"]
@@ -86,47 +86,47 @@ def test_a_crash_mid_search_arrives_as_an_error_without_internal_details(monkeyp
     assert "qdrant" not in events(response)[-1]["detail"]
 
 
-def test_an_uploaded_photo_reaches_the_agent(agent):
+def test_an_uploaded_photo_reaches_the_search(search_loop):
     photo = image_bytes("PNG")
     assert upload("x.png", photo, "image/png").status_code == 200
-    assert agent == [("", photo)]
+    assert search_loop == [("", photo)]
 
 
-def test_an_unsupported_content_type_is_rejected(agent):
+def test_an_unsupported_content_type_is_rejected(search_loop):
     assert upload("x.gif", image_bytes("GIF"), "image/gif").status_code == 415
 
 
-def test_bytes_that_are_not_an_image_are_rejected_whatever_the_header_says(agent):
+def test_bytes_that_are_not_an_image_are_rejected_whatever_the_header_says(search_loop):
     assert upload("x.jpg", b"not an image", "image/jpeg").status_code == 415
-    assert agent == []
+    assert search_loop == []
 
 
-def test_an_image_in_an_unsupported_format_is_rejected_despite_its_header(agent):
+def test_an_image_in_an_unsupported_format_is_rejected_despite_its_header(search_loop):
     assert upload("x.png", image_bytes("GIF"), "image/png").status_code == 415
-    assert agent == []
+    assert search_loop == []
 
 
-def test_an_oversized_upload_is_rejected(agent, monkeypatch):
+def test_an_oversized_upload_is_rejected(search_loop, monkeypatch):
     monkeypatch.setattr(settings(), "max_upload_bytes", 10)
     assert upload("x.png", image_bytes("PNG"), "image/png").status_code == 413
 
 
-def test_an_image_with_too_many_pixels_is_rejected(agent, monkeypatch):
+def test_an_image_with_too_many_pixels_is_rejected(search_loop, monkeypatch):
     monkeypatch.setattr(security, "MAX_IMAGE_PIXELS", 10)  # the test image is 4x4
     assert upload("x.png", image_bytes("PNG"), "image/png").status_code == 413
-    assert agent == []
+    assert search_loop == []
 
 
 def search_status() -> int:
     return client.post("/search", data={"query": "shirt"}, headers=key()).status_code
 
 
-def test_searches_over_the_rate_limit_are_turned_away(agent, monkeypatch):
+def test_searches_over_the_rate_limit_are_turned_away(search_loop, monkeypatch):
     monkeypatch.setattr(settings(), "rate_limit_per_minute", 2)
     assert [search_status() for _ in range(3)] == [200, 200, 429]
 
 
-def test_a_turned_away_search_says_when_to_retry(agent, monkeypatch):
+def test_a_turned_away_search_says_when_to_retry(search_loop, monkeypatch):
     monkeypatch.setattr(settings(), "rate_limit_per_minute", 1)
     search_status()
     response = client.post("/search", data={"query": "shirt"}, headers=key())

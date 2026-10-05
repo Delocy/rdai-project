@@ -5,7 +5,7 @@ from qdrant_client import models
 from ..schemas import Candidate, Constraints
 
 
-# everyday words for things the catalogue labels differently (keys are singular)
+# everyday words the catalogue labels differently (singular keys)
 SYNONYMS = {
     "sneaker": "shoe",
     "trainer": "shoe",
@@ -30,15 +30,14 @@ def _singular(word: str) -> str:
 
 
 def words(text: str) -> list[str]:
-    """Normalised words in order: lower case, singular, hyphens dropped, synonyms applied."""
+    """Lower case, singular words with hyphens dropped and synonyms applied."""
     normalised = (_singular(word) for word in re.findall(r"[a-z0-9]+", re.sub(r"[-']", "", text.lower())))
     return [SYNONYMS.get(word, word) for word in normalised]
 
 
 def loosely_matches(wanted: str, actual: str | None) -> bool:
-    """Whole words, either way round, ignoring case, hyphens and plurals: "blue" fits
-    "Navy Blue", "t-shirt" fits "Tshirts" - but "Shirts" doesn't fit "Tshirts", which a
-    plain substring test would let through."""
+    """Whole words in either direction, ignoring case, hyphens and plurals. "blue" fits
+    "Navy Blue" and "t-shirt" fits "Tshirts", but "Shirts" doesn't fit "Tshirts"."""
     if not actual:
         return False
     want, have = set(words(wanted)), set(words(actual))
@@ -46,7 +45,7 @@ def loosely_matches(wanted: str, actual: str | None) -> bool:
 
 
 def demote(constraints: Constraints, field: str, value: str) -> Constraints:
-    """Drop a hard filter but keep its meaning as a soft signal in the embedding probe."""
+    """Drop a filter but keep its value in the embedding probe."""
     intent = constraints.intent
     if value.strip().lower() not in intent.lower():
         intent = f"{value.strip()} {intent}".strip()
@@ -54,7 +53,7 @@ def demote(constraints: Constraints, field: str, value: str) -> Constraints:
 
 
 def misses(candidate: Candidate, requested: Constraints) -> list[str]:
-    """How a result falls short of what was asked for, so relaxed matches are labelled as such."""
+    """How a result falls short of the request."""
     out = []
     if requested.price_max is not None and candidate.price > requested.price_max:
         out.append(f"over budget by {candidate.price - requested.price_max:.2f}")
@@ -75,7 +74,7 @@ def apply(
         payload = point.payload or {}
         price = float(payload.get("price", 0.0))
 
-        # price is filtered server side; colour and category need loose matching
+        # Qdrant already filtered these; this covers searches made without catalogue labels
         if constraints.colour and not loosely_matches(constraints.colour, payload.get("colour")):
             rejected["wrong_colour"] += 1
             continue

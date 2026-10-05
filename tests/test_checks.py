@@ -1,7 +1,7 @@
 from qdrant_client import models
 
-from app.agent.checks import apply, loosely_matches, misses
-from app.agent.loop import repair
+from app.search.checks import apply, loosely_matches, misses
+from app.search.loop import repair
 from app.schemas import Candidate, Constraints
 
 
@@ -16,6 +16,15 @@ def point(price: float, category: str = "shoes", colour: str | None = None) -> m
 
 
 NONE_REJECTED = {"wrong_colour": 0, "wrong_category": 0}
+
+
+def more_without(field: str):
+    """Counts that rise once `field` is dropped, so that constraint is the one in the way."""
+    return lambda constraints: 5 if getattr(constraints, field) is None else 0
+
+
+def nothing_helps(constraints: Constraints) -> int:
+    return 0
 
 
 def test_no_constraints_keeps_everything():
@@ -54,7 +63,7 @@ def test_category_tolerates_model_casing_and_plurals():
 def test_repair_moves_colour_into_the_query_probe():
     repaired, note = repair(
         Constraints(intent="running shoes", price_max=50, colour="blue"),
-        {**NONE_REJECTED, "wrong_colour": 4},
+        more_without("colour"),
     )
     assert repaired.colour is None
     assert repaired.intent == "blue running shoes"
@@ -65,7 +74,7 @@ def test_repair_moves_colour_into_the_query_probe():
 def test_repair_moves_category_into_the_query_probe():
     repaired, note = repair(
         Constraints(intent="something black", category="watches"),
-        {**NONE_REJECTED, "wrong_category": 9},
+        more_without("category"),
     )
     assert repaired.category is None
     assert repaired.intent == "watches something black"
@@ -74,19 +83,19 @@ def test_repair_moves_category_into_the_query_probe():
 
 def test_repair_does_not_duplicate_a_colour_already_in_the_probe():
     repaired, _ = repair(
-        Constraints(intent="blue top", colour="Blue"), {**NONE_REJECTED, "wrong_colour": 2}
+        Constraints(intent="blue top", colour="Blue"), more_without("colour")
     )
     assert repaired.intent == "blue top"
 
 
 def test_repair_widens_price_when_filters_are_not_the_problem():
-    repaired, note = repair(Constraints(price_max=50), NONE_REJECTED)
+    repaired, note = repair(Constraints(price_max=50), nothing_helps)
     assert repaired.price_max == 62.5
     assert "price" in note
 
 
 def test_repair_gives_up_when_nothing_left_to_relax():
-    repaired, note = repair(Constraints(), NONE_REJECTED)
+    repaired, note = repair(Constraints(), nothing_helps)
     assert note == ""
     assert repaired == Constraints()
 
@@ -133,11 +142,17 @@ def test_everyday_words_match_the_catalogue_labels():
 
 
 def test_repair_widens_the_budget_before_giving_up_the_category():
-    # every sports shoe costs over 40: relax the budget, not what kind of thing it is
+    # every sports shoe costs over 40, so widen the budget rather than drop the category
     repaired, note = repair(
         Constraints(intent="running shoes", category="Sports Shoes", price_max=40),
-        {**NONE_REJECTED, "wrong_category": 24},
+        more_without("category"),
     )
     assert repaired.category == "Sports Shoes"
     assert repaired.price_max == 50
     assert "price" in note
+
+
+def test_repair_keeps_a_colour_that_isnt_what_is_holding_results_back():
+    repaired, note = repair(Constraints(intent="red sandals", colour="Red", category="Sandals"), more_without("category"))
+    assert repaired.colour == "Red"
+    assert "category" in note

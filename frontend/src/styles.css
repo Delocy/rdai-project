@@ -1,5 +1,4 @@
-/* Admin-style UI in Shopify's design language: dark top bar, grey page, white cards,
-   badges and banners. Light theme only. */
+/* Admin-style UI after Shopify's: dark top bar, grey page, white cards. Light theme only. */
 
 :root {
   color-scheme: light;
@@ -367,8 +366,13 @@ img {
   cursor: pointer;
 }
 
-.chip-remove:hover {
+.chip-remove:hover:not(:disabled) {
   background: var(--neutral-bg);
+}
+
+.chip-remove:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .chip-remove .icon {
@@ -519,7 +523,7 @@ img {
 
 .result {
   display: grid;
-  /* fixed price and badge columns, so prices line up from row to row */
+  /* fixed price and badge columns so prices line up */
   grid-template-columns: 56px minmax(0, 1fr) 72px 190px;
   align-items: center;
   gap: 0 12px;
@@ -571,7 +575,7 @@ img {
   gap: 4px;
 }
 
-/* the longest miss ("Face Wash and Cleanser, not Perfume and Body Mist") wraps rather than overflows */
+/* long misses wrap instead of overflowing */
 .result-fit .badge {
   white-space: normal;
 }
@@ -709,13 +713,11 @@ img {
   color: var(--icon);
 }
 
-.step-repair .step-icon,
-.step-warn .step-icon {
+.step-repair .step-icon {
   background: var(--caution-bg);
 }
 
-.step-repair .step-icon .icon,
-.step-warn .step-icon .icon {
+.step-repair .step-icon .icon {
   color: var(--caution-icon);
 }
 
@@ -819,13 +821,17 @@ img {
     flex: 1;
   }
 
-  /* stacked cards are spaced by their own top margin */
+  /* cards already have a top margin */
   .columns {
     flex-direction: column;
     align-items: stretch;
     gap: 0;
   }
 
+}
+
+/* tablets and narrow windows: badges move under the title */
+@media (max-width: 1079px) {
   .result {
     grid-template-columns: 56px minmax(0, 1fr) auto;
   }
