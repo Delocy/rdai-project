@@ -304,8 +304,15 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 9px 20px;
   margin-top: 14px;
+}
+
+.examples-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
 }
 
 .examples-label {
@@ -373,6 +380,13 @@ h2 {
   font-weight: 600;
 }
 
+.relaxed {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--warn);
+}
+
 /* results */
 
 .grid {
@@ -437,6 +451,21 @@ h2 {
   color: var(--fg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.card .misses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.card .miss {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
 .card .why {
@@ -571,4 +600,9 @@ h2 {
   color: var(--faint);
   font-size: 14px;
   font-weight: 500;
+}
+
+.muted.mode {
+  margin: 0 0 14px;
+  font-size: 13px;
 }

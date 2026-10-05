@@ -24,17 +24,17 @@
 
   <rect x="120" y="270" width="290" height="50" rx="6" fill="#ffffff" stroke="#666666"/>
   <text x="265" y="290" font-size="12" text-anchor="middle" fill="#1a1a1a">API key auth</text>
-  <text x="265" y="307" font-size="10" text-anchor="middle" fill="#555555">upload size / MIME validation</text>
+  <text x="265" y="307" font-size="10" text-anchor="middle" fill="#555555">upload size · decoded-image check</text>
 
   <rect x="440" y="270" width="330" height="50" rx="6" fill="#ffffff" stroke="#666666"/>
-  <text x="605" y="300" font-size="12" text-anchor="middle" fill="#1a1a1a">POST /search · POST /ingest · GET /health</text>
+  <text x="605" y="300" font-size="12" text-anchor="middle" fill="#1a1a1a">POST /search · POST /embed · GET /ready</text>
 
   <rect x="120" y="345" width="650" height="425" rx="6" fill="#fff2cc" stroke="#d6b656"/>
   <text x="560" y="367" font-size="12" font-weight="bold" fill="#7a6320">Agent loop — max 3 iterations</text>
 
-  <rect x="150" y="390" width="230" height="55" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
-  <text x="265" y="412" font-size="12" text-anchor="middle" fill="#1a1a1a">1 · Parse query</text>
-  <text x="265" y="429" font-size="10" text-anchor="middle" fill="#555555">text → structured constraints</text>
+  <rect x="150" y="390" width="230" height="55" rx="6" fill="#d5e8d4" stroke="#82b366"/>
+  <text x="265" y="412" font-size="12" text-anchor="middle" fill="#1a1a1a">1 · Read request</text>
+  <text x="265" y="429" font-size="10" text-anchor="middle" fill="#555555">rules · LLM parsing optional</text>
 
   <rect x="150" y="475" width="230" height="55" rx="6" fill="#d5e8d4" stroke="#82b366"/>
   <text x="265" y="497" font-size="12" text-anchor="middle" fill="#1a1a1a">2 · Retrieve</text>
@@ -45,9 +45,9 @@
   <text x="265" y="600" font-size="10" text-anchor="middle" fill="#555555">price, category and colour</text>
   <text x="265" y="616" font-size="10" text-anchor="middle" fill="#555555">matched on indexed metadata</text>
 
-  <rect x="150" y="685" width="230" height="60" rx="6" fill="#ffe6cc" stroke="#d79b00"/>
-  <text x="265" y="710" font-size="12" text-anchor="middle" fill="#1a1a1a">4 · Justify top 3–5</text>
-  <text x="265" y="727" font-size="10" text-anchor="middle" fill="#555555">vision LLM · per-item rationale</text>
+  <rect x="150" y="685" width="230" height="60" rx="6" fill="#ffe6cc" stroke="#d79b00" stroke-dasharray="5 3"/>
+  <text x="265" y="710" font-size="12" text-anchor="middle" fill="#1a1a1a">4 · Rank top 5</text>
+  <text x="265" y="727" font-size="10" text-anchor="middle" fill="#555555">CLIP similarity · optional vision LLM</text>
 
   <polygon points="460,595 550,545 640,595 550,645" fill="#ffffff" stroke="#666666"/>
   <text x="550" y="591" font-size="12" text-anchor="middle" fill="#1a1a1a">constraints</text>
@@ -58,8 +58,8 @@
   <text x="550" y="447" font-size="10" text-anchor="middle" fill="#555555">relax filter · rewrite query</text>
 
   <rect x="120" y="785" width="650" height="45" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
-  <text x="445" y="803" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenCLIP ViT-B/32 (ONNX) — local embeddings</text>
-  <text x="445" y="820" font-size="10" text-anchor="middle" fill="#555555">/ingest catalog indexing · /search query + colour checks</text>
+  <text x="445" y="803" font-size="12" text-anchor="middle" fill="#1a1a1a">CLIP ViT-B/32 (ONNX) — the served model, runs locally</text>
+  <text x="445" y="820" font-size="10" text-anchor="middle" fill="#555555">image + text embeddings for indexing and search</text>
 
   <rect x="830" y="470" width="200" height="110" rx="6" fill="#e1d5e7" stroke="#9673a6"/>
   <text x="930" y="507" font-size="12" text-anchor="middle" fill="#1a1a1a">Qdrant</text>
@@ -68,20 +68,20 @@
   <text x="930" y="558" font-size="10" text-anchor="middle" fill="#555555">category</text>
 
   <rect x="1130" y="270" width="200" height="100" rx="6" fill="#f8cecc" stroke="#b85450" stroke-dasharray="6 4"/>
-  <text x="1230" y="302" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenRouter</text>
-  <text x="1230" y="322" font-size="10" text-anchor="middle" fill="#555555">free-tier model IDs</text>
-  <text x="1230" y="338" font-size="10" text-anchor="middle" fill="#555555">config + fallback list</text>
+  <text x="1230" y="302" font-size="12" text-anchor="middle" fill="#1a1a1a">OpenRouter / Ollama</text>
+  <text x="1230" y="322" font-size="10" text-anchor="middle" fill="#555555">optional · free tier or local</text>
+  <text x="1230" y="338" font-size="10" text-anchor="middle" fill="#555555">fallbacks · failing models skipped</text>
 
-  <text x="1130" y="432" font-size="11" font-style="italic" fill="#555555">2 LLM calls per query — cheap checks</text>
-  <text x="1130" y="448" font-size="11" font-style="italic" fill="#555555">absorb the rest, keeping free-tier</text>
-  <text x="1130" y="464" font-size="11" font-style="italic" fill="#555555">rate limits viable</text>
+  <text x="1130" y="432" font-size="11" font-style="italic" fill="#555555">No LLM calls by default; 1 per search</text>
+  <text x="1130" y="448" font-size="11" font-style="italic" fill="#555555">once a vision model is set up (2 with</text>
+  <text x="1130" y="464" font-size="11" font-style="italic" fill="#555555">LLM_PARSE on) — the rest is local</text>
 
   <rect x="1130" y="600" width="210" height="190" rx="0" fill="none" stroke="#b3b3b3" stroke-dasharray="4 3"/>
   <text x="1145" y="624" font-size="12" font-weight="bold" fill="#333333">Legend</text>
   <rect x="1145" y="645" width="18" height="18" fill="#d5e8d4" stroke="#82b366"/>
   <text x="1172" y="659" font-size="11" fill="#333333">no LLM call</text>
-  <rect x="1145" y="680" width="18" height="18" fill="#ffe6cc" stroke="#d79b00"/>
-  <text x="1172" y="694" font-size="11" fill="#333333">LLM call (OpenRouter)</text>
+  <rect x="1145" y="680" width="18" height="18" fill="#ffe6cc" stroke="#d79b00" stroke-dasharray="3 2"/>
+  <text x="1172" y="694" font-size="11" fill="#333333">LLM call (optional)</text>
   <rect x="1145" y="715" width="18" height="18" fill="#e1d5e7" stroke="#9673a6"/>
   <text x="1172" y="729" font-size="11" fill="#333333">local service / model</text>
   <rect x="1145" y="750" width="18" height="18" fill="#f8cecc" stroke="#b85450" stroke-dasharray="3 2"/>

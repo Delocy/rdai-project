@@ -5,17 +5,19 @@ import numpy as np
 from .. import store
 from ..config import settings
 from ..embeddings import embed_image, embed_text
+from ..llm import TEXT, VISION, configured
 from ..schemas import Candidate, Constraints, SearchResponse, Step
-from .checks import apply
+from .checks import apply, demote, misses
 from .justify import justify
-from .parse import parse_query
+from .parse import parse_query, read_rules
 
 
 def query_vector(text: str, image_bytes: bytes | None, constraints: Constraints) -> np.ndarray:
     vectors = []
     if image_bytes:
         vectors.append(embed_image(image_bytes))
-    probe = constraints.intent or text
+    # "like this but cheaper" with a photo: search on the photo, not the comparison words
+    probe = constraints.intent or ("" if image_bytes else text)
     if probe.strip():
         vectors.append(embed_text(probe))
     if not vectors:
@@ -27,23 +29,28 @@ def query_vector(text: str, image_bytes: bytes | None, constraints: Constraints)
 
 
 def repair(constraints: Constraints, rejected: dict[str, int]) -> tuple[Constraints, str]:
-    for field in ("colour", "category"):
-        value = getattr(constraints, field)
-        if rejected[f"wrong_{field}"] and value:
-            return _demote(constraints, field, value), f"{field} filter -> query text"
-
+    """Relax the least important constraint first: colour, then budget, then category."""
+    if rejected["wrong_colour"] and constraints.colour:
+        return demote(constraints, "colour", constraints.colour), "colour filter -> query text"
     if constraints.price_max is not None:
         widened = constraints.price_max * 1.25
         return constraints.model_copy(update={"price_max": widened}), f"price ceiling -> {widened:.2f}"
+    if rejected["wrong_category"] and constraints.category:
+        return demote(constraints, "category", constraints.category), "category filter -> query text"
     return constraints, ""
 
 
-def _demote(constraints: Constraints, field: str, value: str) -> Constraints:
-    """Drop a hard filter but keep its meaning as a soft signal in the embedding probe."""
-    intent = constraints.intent
-    if value.strip().lower() not in intent.lower():
-        intent = f"{value.strip()} {intent}".strip()
-    return constraints.model_copy(update={field: None, "intent": intent})
+def _describe(constraints: Constraints) -> str:
+    parts = []
+    if constraints.category:
+        parts.append(f"category {constraints.category}")
+    if constraints.colour:
+        parts.append(f"colour {constraints.colour}")
+    if constraints.price_max is not None:
+        parts.append(f"under {constraints.price_max:.2f}")
+    if constraints.relative_cheaper:
+        parts.append("cheaper than the closest match")
+    return ", ".join(parts) or "no filters - similarity only"
 
 
 def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]:
@@ -58,12 +65,23 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
         trace.append(step)
         return step
 
-    try:
-        constraints = parse_query(text)
-    except RuntimeError as exc:
-        constraints = Constraints(intent=text)
-        degraded = True
-        yield emit(iteration=0, action="parse unavailable", detail=str(exc)[:160], kept=0)
+    # rules read the request unless LLM parsing is switched on and a model is set up;
+    # a model that fails falls back to the rules rather than to no filters at all
+    constraints, parser = read_rules(text), "rules"
+    if settings().llm_parse and text.strip() and configured(TEXT):
+        try:
+            constraints, parser = parse_query(text), "llm"
+        except RuntimeError as exc:
+            degraded = True
+            yield emit(
+                iteration=0,
+                action="parse unavailable",
+                detail=f"{str(exc)[:120]} - read with rules instead",
+                kept=0,
+            )
+    yield emit(iteration=0, action=f"read request ({parser})", detail=_describe(constraints), kept=0)
+    # repairs relax `constraints`; `requested` keeps what was actually asked for
+    requested = constraints
 
     for iteration in range(1, settings().max_iterations + 1):
         try:
@@ -92,6 +110,7 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
                 constraints = constraints.model_copy(
                     update={"price_max": cap, "relative_cheaper": False}
                 )
+                requested = requested.model_copy(update={"price_max": cap})
                 yield emit(
                     iteration=iteration,
                     action="derive budget",
@@ -116,26 +135,31 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
             break
         yield emit(iteration=iteration, action="repair", detail=note, kept=len(kept))
 
+    # CLIP similarity order unless a vision model is set up to look at the photos
     shortlist = kept[: settings().shortlist]
+    ranked, ranker = shortlist, "similarity"
     explained_empty = False
-    try:
-        ranked = justify(text or constraints.intent, shortlist, image_bytes)
-    except RuntimeError as exc:
-        ranked = shortlist
-        degraded = True
-        yield emit(
-            iteration=0, action="ranking unavailable", detail=str(exc)[:160], kept=len(shortlist)
-        )
-    else:
-        dropped = len(shortlist) - len(ranked)
-        if dropped:
-            explained_empty = True
+    if configured(VISION):
+        try:
+            ranked, ranker = justify(text or constraints.intent, shortlist, image_bytes), "llm"
+        except RuntimeError as exc:
+            degraded = True
             yield emit(
                 iteration=0,
-                action="dropped weak matches",
-                detail=f"{dropped} nearest neighbour(s) didn't actually match the request",
-                kept=len(ranked),
+                action="ranking unavailable",
+                detail=f"{str(exc)[:120]} - kept similarity order",
+                kept=len(shortlist),
             )
+        else:
+            dropped = len(shortlist) - len(ranked)
+            if dropped:
+                explained_empty = True
+                yield emit(
+                    iteration=0,
+                    action="dropped weak matches",
+                    detail=f"{dropped} nearest neighbour(s) didn't actually match the request",
+                    kept=len(ranked),
+                )
 
     if not ranked and not explained_empty:
         yield emit(
@@ -145,4 +169,15 @@ def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]
             kept=0,
         )
 
-    yield SearchResponse(constraints=constraints, results=ranked, trace=trace, degraded=degraded)
+    for candidate in ranked:
+        candidate.misses = misses(candidate, requested)
+
+    yield SearchResponse(
+        requested=requested,
+        constraints=constraints,
+        results=ranked,
+        trace=trace,
+        parser=parser,
+        ranker=ranker,
+        degraded=degraded,
+    )

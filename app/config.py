@@ -19,14 +19,19 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    text_models: str = "z-ai/glm-5.2:free,nvidia/nemotron-3-super-120b-a12b:free,poolside/laguna-s-2.1:free"
+    text_models: str = "qwen/qwen3.8-27b:free,nvidia/nemotron-3-super-120b-a12b:free,poolside/laguna-s-2.1:free"
     vision_models: str = "google/gemma-4-26b-a4b-it:free,dots-studio/dots-3-note-preview:free"
 
     ollama_url: str = "http://host.docker.internal:11434"
     ollama_text_model: str = ""
     ollama_vision_model: str = ""
+    # requests are read by rules unless this is on and a text model is configured; the
+    # vision model, when there is one, always ranks results
+    llm_parse: bool = False
 
     api_key: str = "change-me"
+    # model-backed requests (search, embed) per client per minute; 0 turns the limit off
+    rate_limit_per_minute: int = 30
     max_upload_bytes: int = 5 * 1024 * 1024
     cors_origins: str = ""
 

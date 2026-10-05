@@ -3,17 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { search } from "./api.js";
 import Composer from "./components/Composer.jsx";
 import Results from "./components/Results.jsx";
-import { Constraints, Trace } from "./components/Trace.jsx";
+import { Constraints, Relaxed, Trace } from "./components/Trace.jsx";
 
-// matches the sample catalogue scripts/fetch_catalogue.py + ingest.py load into
-// Qdrant (fashion products with a title, price, category and colour)
+// matched to the sample catalogue: the first group has real matches, the others don't
+// (no red sports shoes under 40, no blue jackets) to show the repair and the "no" answer
 const EXAMPLES = [
-  "red running shoes under 40",
-  "black leather handbag",
-  "formal shoes for a wedding",
-  "blue denim jacket",
-  "sunglasses under 50",
-  "casual white sneakers",
+  { label: "Try:", queries: ["black watch", "white sneakers", "brown handbag", "pink top under 30"] },
+  { label: "Watch it repair:", queries: ["red running shoes under 40"] },
+  { label: "Watch it say no:", queries: ["blue denim jacket"] },
 ];
 
 export default function App() {
@@ -90,17 +87,21 @@ export default function App() {
         />
 
         <div className="examples">
-          <span className="examples-label">Try:</span>
-          {EXAMPLES.map((example) => (
-            <button
-              key={example}
-              type="button"
-              className="chip pick"
-              onClick={() => runExample(example)}
-              disabled={busy}
-            >
-              {example}
-            </button>
+          {EXAMPLES.map(({ label, queries }) => (
+            <div className="examples-group" key={label}>
+              <span className="examples-label">{label}</span>
+              {queries.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  className="chip pick"
+                  onClick={() => runExample(example)}
+                  disabled={busy}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
@@ -117,16 +118,23 @@ export default function App() {
           <>
             {data.degraded ? (
               <div className="callout">
-                No language model was reachable, so these results come from vector search alone,
-                without query parsing or ranking.
+                The LLM didn't answer this time, so this search fell back to reading the request
+                with rules and ranking by visual similarity.
               </div>
             ) : null}
 
             <h2>Understood as</h2>
-            <Constraints constraints={data.constraints} />
+            <Constraints constraints={data.requested ?? data.constraints} />
+            <Relaxed requested={data.requested} applied={data.constraints} />
 
             <h2>Results ({data.results.length})</h2>
-            <Results items={data.results} degraded={data.degraded} />
+            {data.ranker === "similarity" && !data.degraded ? (
+              <p className="muted mode">
+                Ranked by visual similarity (CLIP). No LLM involved - an optional one can re-rank
+                by looking at the photos.
+              </p>
+            ) : null}
+            <Results items={data.results} ranker={data.ranker} degraded={data.degraded} />
           </>
         ) : null}
       </div>

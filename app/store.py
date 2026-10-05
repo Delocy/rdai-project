@@ -27,6 +27,13 @@ def ensure_collection() -> None:
         field_name="price",
         field_schema=models.PayloadSchemaType.FLOAT,
     )
+    # keyword indexes let facet_values() list the catalogue's own labels for the parser
+    for field in ("category", "colour"):
+        client().create_payload_index(
+            collection_name=name,
+            field_name=field,
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
 
 
 def upsert(points: list[models.PointStruct]) -> None:
@@ -35,6 +42,21 @@ def upsert(points: list[models.PointStruct]) -> None:
 
 def count() -> int:
     return client().count(settings().collection, exact=False).count
+
+
+def existing_ids(ids: list[str]) -> set[str]:
+    if not ids:
+        return set()
+    found = client().retrieve(
+        collection_name=settings().collection, ids=ids, with_payload=False, with_vectors=False
+    )
+    return {str(point.id) for point in found}
+
+
+def facet_values(key: str) -> list[str]:
+    """Every distinct value of a keyword-indexed payload field, e.g. all catalogue categories."""
+    hits = client().facet(collection_name=settings().collection, key=key, limit=1000).hits
+    return sorted(str(hit.value) for hit in hits)
 
 
 def search(
@@ -52,5 +74,5 @@ def search(
         limit=limit,
         query_filter=models.Filter(must=must) if must else None,
         with_payload=True,
-        with_vectors=True,
+        with_vectors=False,
     ).points

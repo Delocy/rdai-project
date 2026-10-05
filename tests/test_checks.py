@@ -1,8 +1,8 @@
 from qdrant_client import models
 
-from app.agent.checks import apply
+from app.agent.checks import apply, loosely_matches, misses
 from app.agent.loop import repair
-from app.schemas import Constraints
+from app.schemas import Candidate, Constraints
 
 
 def point(price: float, category: str = "shoes", colour: str | None = None) -> models.ScoredPoint:
@@ -89,3 +89,55 @@ def test_repair_gives_up_when_nothing_left_to_relax():
     repaired, note = repair(Constraints(), NONE_REJECTED)
     assert note == ""
     assert repaired == Constraints()
+
+
+def test_misses_spells_out_how_a_result_breaks_the_request():
+    item = Candidate(id="1", title="t", price=45.0, colour="Red", category="Casual Shoes", score=0.5)
+    request = Constraints(price_max=40, colour="blue", category="Sports Shoes")
+    assert misses(item, request) == ["over budget by 5.00", "Red, not blue", "Casual Shoes, not Sports Shoes"]
+
+
+def test_misses_is_empty_when_a_result_fits_the_request():
+    item = Candidate(id="1", title="t", price=30.0, colour="Navy Blue", category="Shirts", score=0.5)
+    assert misses(item, Constraints(price_max=40, colour="blue", category="shirts")) == []
+
+
+def test_a_shirt_filter_rejects_tshirts_and_sweatshirts():
+    kept, rejected = apply(
+        [point(10, category="Shirts"), point(20, category="Tshirts"), point(30, category="Sweatshirts")],
+        Constraints(category="Shirts"),
+    )
+    assert [c.category for c in kept] == ["Shirts"]
+    assert rejected["wrong_category"] == 2
+
+
+def test_labels_match_on_whole_words_not_substrings():
+    assert not loosely_matches("Shirts", "Tshirts")
+    assert not loosely_matches("Ring", "Earrings")
+    assert not loosely_matches("Bra", "Bracelet")
+
+
+def test_matching_ignores_plurals_case_and_hyphens():
+    assert loosely_matches("watch", "Watches")
+    assert loosely_matches("dress", "Dresses")
+    assert loosely_matches("t-shirt", "Tshirts")
+    assert loosely_matches("Shoes", "Casual Shoes")
+
+
+def test_everyday_words_match_the_catalogue_labels():
+    assert loosely_matches("sneakers", "Casual Shoes")
+    assert loosely_matches("running shoes", "Sports Shoes")
+    assert loosely_matches("tee", "Tshirts")
+    assert loosely_matches("gray", "Grey")
+    assert loosely_matches("purse", "Handbags")
+
+
+def test_repair_widens_the_budget_before_giving_up_the_category():
+    # every sports shoe costs over 40: relax the budget, not what kind of thing it is
+    repaired, note = repair(
+        Constraints(intent="running shoes", category="Sports Shoes", price_max=40),
+        {**NONE_REJECTED, "wrong_category": 24},
+    )
+    assert repaired.category == "Sports Shoes"
+    assert repaired.price_max == 50
+    assert "price" in note

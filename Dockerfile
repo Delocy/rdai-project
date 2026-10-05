@@ -18,8 +18,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.22 /uv /usr/local/bin/uv
 RUN useradd --create-home --uid 10001 appuser && mkdir /app && chown appuser /app
 USER appuser
 WORKDIR /app
-# PYTHONUNBUFFERED so print() output (e.g. first-run seeding progress) reaches
-# `docker compose logs` as it happens rather than in one burst afterwards
+# PYTHONUNBUFFERED: seeding progress shows in the logs as it happens
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1 \

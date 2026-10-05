@@ -6,7 +6,6 @@ export default defineConfig({
   server: {
     proxy: {
       "/search": "http://localhost:8000",
-      "/ingest": "http://localhost:8000",
       "/images": "http://localhost:8000",
     },
   },

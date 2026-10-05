@@ -1,13 +1,25 @@
 import base64
+import time
 from functools import lru_cache
 from typing import Any
 
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, OpenAI
 
 from .config import settings
 
 TEXT = "text"
 VISION = "vision"
+
+# gone (404), rate-limited (429), out of credit (402) or unreachable: skip it for a while
+# instead of spending one of the free tier's daily requests on it every search
+COOLDOWN_SECONDS = 300
+_cooling: dict[str, float] = {}  # model -> time.monotonic() it may be tried again
+
+
+def _worth_skipping(exc: Exception) -> bool:
+    if isinstance(exc, APIConnectionError):  # includes timeouts
+        return True
+    return isinstance(exc, APIStatusError) and exc.status_code in {402, 404, 429}
 
 
 @lru_cache
@@ -37,13 +49,21 @@ def _attempts(kind: str) -> list[tuple[OpenAI, str]]:
     return chain
 
 
+def configured(kind: str) -> bool:
+    """Whether any model is set up for this kind - so having none is a mode, not a failure."""
+    return bool(_attempts(kind))
+
+
 def complete(messages: list[dict[str, Any]], kind: str, json_mode: bool = False) -> str:
-    kwargs: dict[str, Any] = {"messages": messages}
+    # temperature 0: parsing and ranking should give the same answer for the same input
+    kwargs: dict[str, Any] = {"messages": messages, "temperature": 0}
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
 
     last: Exception | None = None
     for client, model in _attempts(kind):
+        if _cooling.get(model, 0.0) > time.monotonic():
+            continue
         try:
             response = client.chat.completions.create(model=model, **kwargs)
             if not response.choices:
@@ -55,7 +75,11 @@ def complete(messages: list[dict[str, Any]], kind: str, json_mode: bool = False)
             return response.choices[0].message.content or ""
         except Exception as exc:
             last = exc
+            if _worth_skipping(exc):
+                _cooling[model] = time.monotonic() + COOLDOWN_SECONDS
 
+    if last is None and _attempts(kind):
+        raise RuntimeError(f"every {kind} model failed in the last few minutes, skipping them for now")
     raise RuntimeError(f"no {kind} model available, last error: {last}")
 
 
