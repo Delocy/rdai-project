@@ -49,14 +49,14 @@ def test_images_are_embedded_in_batches(tmp_path, index):
     assert len(index["points"]) == 5
 
 
-def test_reindexing_overwrites_products_instead_of_duplicating_them(tmp_path, index):
+def test_reindex_overwrites(tmp_path, index):
     csv, images = catalogue(tmp_path, FIVE, [f"{i}.jpg" for i in range(5)])
     seed.seed_from_csv(csv, images, log=quiet)
     seed.seed_from_csv(csv, images, log=quiet)
     assert len(index["points"]) == 5
 
 
-def test_rows_without_a_title_price_or_image_file_are_skipped(tmp_path, index):
+def test_skips_incomplete_rows(tmp_path, index):
     rows = [
         "Item 0,10,0.jpg,Shirts,Blue,",
         ",11,1.jpg,Shirts,Blue,",
@@ -67,7 +67,7 @@ def test_rows_without_a_title_price_or_image_file_are_skipped(tmp_path, index):
     assert seed.seed_from_csv(csv, images, log=quiet) == 1
 
 
-def test_seed_missing_resumes_an_interrupted_first_start(tmp_path, index):
+def test_seed_missing_resumes(tmp_path, index):
     csv, images = catalogue(tmp_path, FIVE, [f"{i}.jpg" for i in range(5)])
     index["existing"] = {seed.point_id(row) for row in list(seed.rows(csv))[:3]}
     index["count"] = 3
@@ -75,7 +75,7 @@ def test_seed_missing_resumes_an_interrupted_first_start(tmp_path, index):
     assert index["batches"] == [2]
 
 
-def test_seed_missing_does_nothing_once_everything_is_indexed(tmp_path, index):
+def test_seed_missing_when_done(tmp_path, index):
     csv, images = catalogue(tmp_path, FIVE, [f"{i}.jpg" for i in range(5)])
     index["existing"] = {seed.point_id(row) for row in seed.rows(csv)}
     index["count"] = 5
@@ -83,7 +83,7 @@ def test_seed_missing_does_nothing_once_everything_is_indexed(tmp_path, index):
     assert index["batches"] == []
 
 
-def test_seed_missing_leaves_a_collection_filled_some_other_way_alone(tmp_path, index):
+def test_seed_missing_skips_foreign_collection(tmp_path, index):
     csv, images = catalogue(tmp_path, FIVE, [f"{i}.jpg" for i in range(5)])
     index["count"] = 40  # holds data, but none of these rows' ids
     assert seed.seed_missing(csv, images, log=quiet) == 0

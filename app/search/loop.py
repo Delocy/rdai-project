@@ -75,7 +75,7 @@ def _describe(constraints: Constraints) -> str:
         parts.append(f"under {constraints.price_max:.2f}")
     if constraints.relative_cheaper:
         parts.append("cheaper than the closest match")
-    return ", ".join(parts) or "no filters - similarity only"
+    return ", ".join(parts) or "no filters"
 
 
 def run(text: str, image_bytes: bytes | None) -> Iterator[Step | SearchResponse]:

@@ -38,11 +38,11 @@ def test_rules_read_category_colour_and_budget(text, category, colour, price_max
     assert (constraints.category, constraints.colour, constraints.price_max) == (category, colour, price_max)
 
 
-def test_a_colour_the_catalogue_lacks_is_still_read_so_results_get_flagged():
+def test_unknown_colour_still_read():
     assert read("teal watch").colour == "teal"
 
 
-def test_cheaper_without_a_number_means_cheaper_than_the_reference():
+def test_cheaper_without_number():
     constraints = read("like this but cheaper")
     assert constraints.relative_cheaper is True
     assert constraints.price_max is None
@@ -54,11 +54,11 @@ def test_cheaper_than_a_number_is_a_budget():
     assert constraints.relative_cheaper is False
 
 
-def test_intent_keeps_what_the_item_is_and_drops_budget_and_comparison_words():
+def test_intent_drops_budget_words():
     assert read("pink top under 30").intent == "pink top"
     assert read("like this but cheaper").intent == ""
 
 
-def test_budget_and_colour_are_read_even_without_catalogue_labels():
+def test_reads_without_labels():
     constraints = rules.parse("black watch under 50", [], [])
     assert (constraints.category, constraints.colour, constraints.price_max) == (None, "black", 50)

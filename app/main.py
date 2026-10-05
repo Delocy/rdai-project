@@ -108,7 +108,7 @@ async def search(
         except Exception:
             # details stay in the server log, since they can name internal hosts and paths
             log.exception("search failed")
-            yield json.dumps({"type": "error", "detail": "search failed - see the server log"}) + "\n"
+            yield json.dumps({"type": "error", "detail": "search failed, see the server log"}) + "\n"
 
     return StreamingResponse(events(), media_type="application/x-ndjson")
 

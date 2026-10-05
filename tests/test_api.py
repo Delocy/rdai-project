@@ -75,7 +75,7 @@ def test_search_streams_each_step_then_the_result(search_loop):
     assert [event["type"] for event in events(response)] == ["step", "done"]
 
 
-def test_a_crash_mid_search_arrives_as_an_error_without_internal_details(monkeypatch):
+def test_crash_hides_internal_details(monkeypatch):
     def crashing(text, image):
         yield Step(iteration=1, action="retrieve + check", detail="", kept=0)
         raise RuntimeError("connection to qdrant:6333 refused")
@@ -96,12 +96,12 @@ def test_an_unsupported_content_type_is_rejected(search_loop):
     assert upload("x.gif", image_bytes("GIF"), "image/gif").status_code == 415
 
 
-def test_bytes_that_are_not_an_image_are_rejected_whatever_the_header_says(search_loop):
+def test_rejects_non_image_bytes(search_loop):
     assert upload("x.jpg", b"not an image", "image/jpeg").status_code == 415
     assert search_loop == []
 
 
-def test_an_image_in_an_unsupported_format_is_rejected_despite_its_header(search_loop):
+def test_rejects_unsupported_format(search_loop):
     assert upload("x.png", image_bytes("GIF"), "image/png").status_code == 415
     assert search_loop == []
 
@@ -111,7 +111,7 @@ def test_an_oversized_upload_is_rejected(search_loop, monkeypatch):
     assert upload("x.png", image_bytes("PNG"), "image/png").status_code == 413
 
 
-def test_an_image_with_too_many_pixels_is_rejected(search_loop, monkeypatch):
+def test_rejects_too_many_pixels(search_loop, monkeypatch):
     monkeypatch.setattr(security, "MAX_IMAGE_PIXELS", 10)  # the test image is 4x4
     assert upload("x.png", image_bytes("PNG"), "image/png").status_code == 413
     assert search_loop == []
@@ -121,7 +121,7 @@ def search_status() -> int:
     return client.post("/search", data={"query": "shirt"}, headers=key()).status_code
 
 
-def test_searches_over_the_rate_limit_are_turned_away(search_loop, monkeypatch):
+def test_rate_limit(search_loop, monkeypatch):
     monkeypatch.setattr(settings(), "rate_limit_per_minute", 2)
     assert [search_status() for _ in range(3)] == [200, 200, 429]
 
@@ -175,7 +175,7 @@ def test_embed_needs_the_api_key():
     assert client.post("/embed", data={"text": "red shoe"}).status_code == 401
 
 
-def test_ready_once_qdrant_has_products_and_the_models_are_loaded(monkeypatch):
+def test_ready(monkeypatch):
     monkeypatch.setattr(main.store, "count", lambda: 300)
     monkeypatch.setattr(main, "models_loaded", lambda: True)
     response = client.get("/ready")
@@ -184,7 +184,7 @@ def test_ready_once_qdrant_has_products_and_the_models_are_loaded(monkeypatch):
 
 
 @pytest.mark.parametrize("products, loaded", [(None, True), (0, True), (300, False)])
-def test_not_ready_while_qdrant_the_catalogue_or_the_models_are_missing(monkeypatch, products, loaded):
+def test_not_ready(monkeypatch, products, loaded):
     def count():
         if products is None:
             raise ConnectionError("qdrant unreachable")

@@ -19,7 +19,7 @@ test("the trace reads as plain steps", () => {
   ]);
 });
 
-test("every kind of repair and fallback has its own wording", () => {
+test("wording for each step type", () => {
   const rows = describeSteps([
     { action: "repair", detail: "category filter -> query text" },
     { action: "repair", detail: "price ceiling -> 62.50" },
@@ -41,8 +41,8 @@ test("every kind of repair and fallback has its own wording", () => {
   );
 });
 
-test("a request with no filters, or cheaper than a photo, still reads well", () => {
-  assert.equal(describeSteps([{ action: "read request (rules)", detail: "no filters - similarity only" }])[0].detail, "No filters");
+test("no filters and cheaper requests", () => {
+  assert.equal(describeSteps([{ action: "read request (rules)", detail: "no filters" }])[0].detail, "No filters");
   const cheaper = [{ action: "read request (rules)", detail: "cheaper than the closest match" }];
   assert.equal(describeSteps(cheaper, { withPhoto: true })[0].detail, "cheaper than your photo");
   assert.equal(describeSteps(cheaper)[0].detail, "cheaper than the closest match");
@@ -54,7 +54,7 @@ test("unknown steps pass through as sent", () => {
   ]);
 });
 
-test("the live row says searching, then searching again", () => {
+test("live row label", () => {
   assert.equal(liveLabel(trace.slice(0, 1)), "Searching");
   assert.equal(liveLabel(trace.slice(0, 3)), "Searching again");
 });

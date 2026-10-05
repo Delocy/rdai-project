@@ -46,12 +46,12 @@ def test_colour_matches_compound_names_either_way():
     assert rejected["wrong_colour"] == 1
 
 
-def test_missing_colour_metadata_is_rejected_when_colour_requested():
+def test_missing_colour_rejected():
     kept, _ = apply([point(10, colour=None)], Constraints(colour="blue"))
     assert kept == []
 
 
-def test_category_tolerates_model_casing_and_plurals():
+def test_category_casing_and_plurals():
     kept, rejected = apply(
         [point(10, category="Watches"), point(20, category="Shirts")],
         Constraints(category="watches"),
@@ -60,7 +60,7 @@ def test_category_tolerates_model_casing_and_plurals():
     assert rejected["wrong_category"] == 1
 
 
-def test_repair_moves_colour_into_the_query_probe():
+def test_repair_moves_colour_to_probe():
     repaired, note = repair(
         Constraints(intent="running shoes", price_max=50, colour="blue"),
         more_without("colour"),
@@ -71,7 +71,7 @@ def test_repair_moves_colour_into_the_query_probe():
     assert "colour" in note
 
 
-def test_repair_moves_category_into_the_query_probe():
+def test_repair_moves_category_to_probe():
     repaired, note = repair(
         Constraints(intent="something black", category="watches"),
         more_without("category"),
@@ -81,37 +81,37 @@ def test_repair_moves_category_into_the_query_probe():
     assert "category" in note
 
 
-def test_repair_does_not_duplicate_a_colour_already_in_the_probe():
+def test_repair_no_duplicate_colour():
     repaired, _ = repair(
         Constraints(intent="blue top", colour="Blue"), more_without("colour")
     )
     assert repaired.intent == "blue top"
 
 
-def test_repair_widens_price_when_filters_are_not_the_problem():
+def test_repair_widens_price():
     repaired, note = repair(Constraints(price_max=50), nothing_helps)
     assert repaired.price_max == 62.5
     assert "price" in note
 
 
-def test_repair_gives_up_when_nothing_left_to_relax():
+def test_repair_gives_up():
     repaired, note = repair(Constraints(), nothing_helps)
     assert note == ""
     assert repaired == Constraints()
 
 
-def test_misses_spells_out_how_a_result_breaks_the_request():
+def test_misses_describe_each_problem():
     item = Candidate(id="1", title="t", price=45.0, colour="Red", category="Casual Shoes", score=0.5)
     request = Constraints(price_max=40, colour="blue", category="Sports Shoes")
     assert misses(item, request) == ["over budget by 5.00", "Red, not blue", "Casual Shoes, not Sports Shoes"]
 
 
-def test_misses_is_empty_when_a_result_fits_the_request():
+def test_no_misses_when_it_fits():
     item = Candidate(id="1", title="t", price=30.0, colour="Navy Blue", category="Shirts", score=0.5)
     assert misses(item, Constraints(price_max=40, colour="blue", category="shirts")) == []
 
 
-def test_a_shirt_filter_rejects_tshirts_and_sweatshirts():
+def test_shirts_excludes_tshirts():
     kept, rejected = apply(
         [point(10, category="Shirts"), point(20, category="Tshirts"), point(30, category="Sweatshirts")],
         Constraints(category="Shirts"),
@@ -120,20 +120,20 @@ def test_a_shirt_filter_rejects_tshirts_and_sweatshirts():
     assert rejected["wrong_category"] == 2
 
 
-def test_labels_match_on_whole_words_not_substrings():
+def test_whole_words_not_substrings():
     assert not loosely_matches("Shirts", "Tshirts")
     assert not loosely_matches("Ring", "Earrings")
     assert not loosely_matches("Bra", "Bracelet")
 
 
-def test_matching_ignores_plurals_case_and_hyphens():
+def test_ignores_plurals_case_hyphens():
     assert loosely_matches("watch", "Watches")
     assert loosely_matches("dress", "Dresses")
     assert loosely_matches("t-shirt", "Tshirts")
     assert loosely_matches("Shoes", "Casual Shoes")
 
 
-def test_everyday_words_match_the_catalogue_labels():
+def test_synonyms():
     assert loosely_matches("sneakers", "Casual Shoes")
     assert loosely_matches("running shoes", "Sports Shoes")
     assert loosely_matches("tee", "Tshirts")
@@ -141,7 +141,7 @@ def test_everyday_words_match_the_catalogue_labels():
     assert loosely_matches("purse", "Handbags")
 
 
-def test_repair_widens_the_budget_before_giving_up_the_category():
+def test_repair_budget_before_category():
     # every sports shoe costs over 40, so widen the budget rather than drop the category
     repaired, note = repair(
         Constraints(intent="running shoes", category="Sports Shoes", price_max=40),
@@ -152,7 +152,7 @@ def test_repair_widens_the_budget_before_giving_up_the_category():
     assert "price" in note
 
 
-def test_repair_keeps_a_colour_that_isnt_what_is_holding_results_back():
+def test_repair_skips_colour_that_doesnt_help():
     repaired, note = repair(Constraints(intent="red sandals", colour="Red", category="Sandals"), more_without("category"))
     assert repaired.colour == "Red"
     assert "category" in note

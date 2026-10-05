@@ -56,13 +56,13 @@ def actions(response: SearchResponse) -> list[str]:
     return [step.action for step in response.trace]
 
 
-def test_rules_read_the_request_and_results_keep_similarity_order(monkeypatch):
+def test_results_in_similarity_order(monkeypatch):
     response = search(monkeypatch, Constraints(intent="running shoes", category="Sports Shoes"))
     assert actions(response)[0] == "read request"
     assert [item.title for item in response.results] == ["A", "B", "C"]
 
 
-def test_a_match_beyond_the_nearest_few_is_still_found(monkeypatch):
+def test_finds_match_beyond_nearest(monkeypatch):
     # only the 2 nearest come back and both are red, so the blue pair is only found if
     # the filter runs in the database
     monkeypatch.setattr(settings(), "top_k", 2)
@@ -72,7 +72,7 @@ def test_a_match_beyond_the_nearest_few_is_still_found(monkeypatch):
     assert "repair" not in actions(response)
 
 
-def test_a_colour_is_only_relaxed_when_that_frees_up_matches(monkeypatch):
+def test_colour_relaxed_only_if_it_helps(monkeypatch):
     # no sandals at all, so dropping "Red" changes nothing and the category goes
     response = search(monkeypatch, Constraints(intent="red sandals", colour="Red", category="Sandals"))
     repairs = [step.detail for step in response.trace if step.action == "repair"]
@@ -85,7 +85,7 @@ def test_nothing_left_after_the_repairs_says_so(monkeypatch):
     assert actions(response)[-1] == "no match"
 
 
-def test_response_keeps_the_request_and_reports_what_was_relaxed(monkeypatch):
+def test_reports_what_was_relaxed(monkeypatch):
     request = Constraints(intent="red running shoes", colour="Red", category="Sports Shoes", price_max=40)
     response = search(monkeypatch, request)
     assert response.requested == request
@@ -108,7 +108,7 @@ def test_results_that_fit_carry_no_misses(monkeypatch):
     assert [item.misses for item in response.results] == [[], [], []]
 
 
-def test_a_derived_cheaper_than_budget_counts_as_the_request(monkeypatch):
+def test_derived_budget_counts_as_request(monkeypatch):
     response = search(monkeypatch, Constraints(intent="shoes like this", relative_cheaper=True))
     # the top match costs 45, so "cheaper" caps at 36; repairs widen it, and results are
     # labelled against the 36
@@ -120,7 +120,7 @@ def test_a_derived_cheaper_than_budget_counts_as_the_request(monkeypatch):
     }
 
 
-def test_comparison_words_alone_do_not_dilute_a_reference_photo(monkeypatch):
+def test_photo_not_diluted_by_comparison_words(monkeypatch):
     embedded = []
     monkeypatch.setattr(loop, "embed_image", lambda data: np.ones(512, dtype=np.float32))
     monkeypatch.setattr(loop, "embed_text", lambda text: embedded.append(text) or np.ones(512, dtype=np.float32))

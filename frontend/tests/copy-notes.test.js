@@ -7,7 +7,7 @@ const search = (kept) => ({ action: "retrieve + check", detail: `${kept} matchin
 const repair = (detail) => ({ action: "repair", detail });
 const pinkTops = { category: "Tops", colour: "Pink", price_max: 30 };
 
-test("the relaxed banner says what was loosened, in plain words", () => {
+test("relaxed banner", () => {
   assert.equal(
     relaxedNote(pinkTops, { ...pinkTops, colour: null }, [search(3), repair("colour filter -> query text"), search(9)]),
     "Only 3 pink tops under $30, so the closest tops in other colours are included too. Each one says how it's different.",
@@ -30,7 +30,7 @@ test("the relaxed banner says what was loosened, in plain words", () => {
   );
 });
 
-test("a relaxation that still found some says how many", () => {
+test("relaxed banner counts what was found", () => {
   const watches = { category: "Watches", price_max: 50 };
   assert.equal(
     relaxedNote(watches, { ...watches, price_max: 62.5 }, [search(2), repair("price ceiling -> 62.50"), search(6)]),
@@ -54,7 +54,7 @@ test("nothing relaxed means no banner", () => {
   assert.equal(relaxedNote(pinkTops, pinkTops, [search(6)]), null);
 });
 
-test("the banner doesn't point at results that aren't there", () => {
+test("no pointer when there are no results", () => {
   const sunglasses = { category: "Sunglasses", price_max: 50 };
   const trace = [search(0), repair("price ceiling -> 62.50"), search(0), repair("price ceiling -> 78.12"), search(0)];
   assert.equal(
@@ -66,15 +66,15 @@ test("the banner doesn't point at results that aren't there", () => {
 test("errors read as plain sentences", () => {
   assert.deepEqual(errorMessage({ status: 0 }), {
     tone: "critical",
-    text: "Search failed. The server didn't respond - check that the app is still running.",
+    text: "The server didn't respond. Check that the app is still running.",
   });
   assert.deepEqual(errorMessage({ status: 413, detail: "image too large" }), {
     tone: "critical",
-    text: "That photo is over 5 MB - try a smaller one.",
+    text: "That photo is over 5 MB. Try a smaller one.",
   });
   assert.equal(
     errorMessage({ status: 413, detail: "image dimensions too large" }).text,
-    "That photo has too many pixels - try a smaller one.",
+    "That photo has too many pixels. Try a smaller one.",
   );
   assert.deepEqual(errorMessage({ status: 415, detail: "unsupported image type" }), {
     tone: "critical",

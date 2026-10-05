@@ -17,13 +17,13 @@ test("amounts drop zero cents in sentences", () => {
   assert.equal(amount("62.50"), "$62.50");
 });
 
-test("amounts round like the server, so the trace and the banners agree", () => {
+test("amounts round like Python", () => {
   // 50 raised twice by 25% is 78.125, which Python prints as 78.12
   assert.equal(amount(78.125), "$78.12");
   assert.equal(amount(46.875), "$46.88");
 });
 
-test("the request phrase reads like a shopper wrote it", () => {
+test("request phrase", () => {
   assert.equal(requestPhrase(pinkTops), "pink tops under $30");
   assert.equal(requestPhrase({ colour: "Red", category: "Sports Shoes", price_max: 40 }), "red sports shoes under $40");
   assert.equal(requestPhrase({ price_max: 50 }), "items under $50");
@@ -36,7 +36,7 @@ test("misses become plain sentences", () => {
   assert.equal(missSentence("over budget by 4.50"), "$4.50 over your budget.");
 });
 
-test("a result opens to why it's shown, or that it fits", () => {
+test("result detail line", () => {
   const item = (fields) => ({ misses: [], ...fields });
   assert.equal(
     resultDetail(item({ misses: ["Beige, not Pink"] }), pinkTops),
@@ -45,16 +45,16 @@ test("a result opens to why it's shown, or that it fits", () => {
   assert.equal(resultDetail(item({}), pinkTops), "Matches everything you asked for.");
 });
 
-test("nothing-fits explains a raised budget, otherwise suggests broadening", () => {
+test("nothing fits", () => {
   const sunglasses = { category: "Sunglasses", price_max: 50 };
   assert.equal(
     nothingFits(sunglasses, { ...sunglasses, price_max: 78.125 }),
-    "There are no sunglasses under $50 - even raising the budget to $78.12 found none. Try a higher budget.",
+    "There are no sunglasses under $50, even with the budget raised to $78.12. Try a higher budget.",
   );
   assert.equal(nothingFits({ category: "Jackets" }, { category: null }), "Try a broader request.");
 });
 
-test("only near-misses when every result misses something", () => {
+test("only near-misses", () => {
   assert.equal(onlyNearMisses([{ misses: ["Beige, not Pink"] }]), true);
   assert.equal(onlyNearMisses([{ misses: [] }, { misses: ["Beige, not Pink"] }]), false);
   assert.equal(onlyNearMisses([]), false);

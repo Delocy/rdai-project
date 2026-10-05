@@ -20,7 +20,7 @@ def client_with_limit(limit: int) -> tuple[TestClient, list[int]]:
     return TestClient(app), reads
 
 
-def test_a_body_over_the_limit_is_refused_before_the_app_reads_it():
+def test_refuses_large_body():
     client, reads = client_with_limit(100)
     assert client.post("/", content=b"x" * 101).status_code == 413
     assert reads == []
@@ -32,7 +32,7 @@ def test_a_body_within_the_limit_goes_through():
     assert reads == [100]
 
 
-def test_a_streamed_body_with_no_declared_length_is_cut_off_at_the_limit():
+def test_cuts_off_chunked_body():
     client, reads = client_with_limit(100)
 
     def chunks():

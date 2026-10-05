@@ -34,18 +34,18 @@ then shows the api as healthy. The API docs are at http://localhost:8000/docs.
 
 ## How it works
 
-1. **Read** - rules pull out a budget ("under 40"), a colour and a category, using the catalogue's
+1. **Read**: rules pull out a budget ("under 40"), a colour and a category, using the catalogue's
    own labels plus a few everyday words (sneakers, tee).
-2. **Match** - the category and colour become the catalogue labels they name, matched word by word
+2. **Match**: the category and colour become the catalogue labels they name, matched word by word
    ("Shirts" isn't "Tshirts"; "shoes" covers Casual, Sports and Formal Shoes).
-3. **Retrieve** - CLIP embeds the text and/or photo, and Qdrant returns the 24 nearest products that
-   pass the budget, category and colour filters - so a match anywhere in the catalogue is found,
+3. **Retrieve**: CLIP embeds the text and/or photo, and Qdrant returns the 24 nearest products that
+   pass the budget, category and colour filters, so a match anywhere in the catalogue is found,
    not only one among the nearest few.
-4. **Repair** - with fewer than five matches, relax and retry, at most 3 passes: colour becomes a
+4. **Repair**: with fewer than five matches, relax and retry, at most 3 passes: colour becomes a
    soft preference when dropping it brings in more products, then the budget widens 25%, and the
    category goes last. What was relaxed is reported, and misses are marked ("over budget by 4.50",
    "Black, not Red").
-5. **Rank** - by visual similarity: Qdrant returns the nearest first, so the shortlist is already
+5. **Rank**: by visual similarity: Qdrant returns the nearest first, so the shortlist is already
    in CLIP order.
 
 The UI streams each step as it happens. If nothing in the catalogue fits, it says so rather than
@@ -60,9 +60,9 @@ the check uses. CLIP is left to do what it is good at: ranking overall visual si
 ## Evaluation
 
 `scripts/evaluate.py` runs 50 hand-labelled queries (`scripts/eval_cases.json`): 41 with at least
-one matching product and 9 with none ("sunglasses under 50" - every pair costs more). Five search
-by photo, and ten are rephrasings the rules weren't written against ("sunnies", "smart office
-shoes").
+one matching product and 9 with none ("sunglasses under 50", since every pair costs more). Five
+search by photo, and ten are rephrasings the rules weren't written against ("sunnies", "smart
+office shoes").
 
 | | precision@5 | recall@5 | impossible requests handled | correctly labelled | median time |
 | --- | --- | --- | --- | --- | --- |
@@ -74,7 +74,7 @@ Recall counts matching products (up to five) that made the shortlist; a request 
 nothing is passed off as a match, and a result is correctly labelled when it's marked as a miss
 exactly when it is one.
 
-CLIP alone always returns five photos, so it never admits a request can't be met - the loop is
+CLIP alone always returns five photos, so it never admits a request can't be met. The loop is
 what fixes that. The rules match the recall of being handed the right constraints, and read 87%
 of the text queries fully right. Category and colour used to be checked only on the 24 nearest
 neighbours, which capped recall at 84% even with perfect constraints; filtering on them inside
@@ -94,9 +94,8 @@ indexes itself on first start. The photos, titles, categories and colours come f
 [Fashion Product Images (Small)](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small)
 by Param Aggarwal (MIT licence), via its Hugging Face mirror
 [`ashraq/fashion-product-images-small`](https://huggingface.co/datasets/ashraq/fashion-product-images-small).
-It's a demo catalogue, not real inventory - the point is watching the search work, not buying
-anything. Product IDs come from the image file names, so re-indexing overwrites instead of
-duplicating.
+It's a demo catalogue for watching the search work, not real inventory. Product IDs come from
+the image file names, so re-indexing overwrites instead of duplicating.
 
 To pull a different sample from that mirror (no account needed) and re-index it:
 
@@ -129,7 +128,7 @@ them a minute (`RATE_LIMIT_PER_MINUTE`).
 - the Docker build bakes `API_KEY` into the frontend as `VITE_API_KEY`, so anyone who loads the
   page has it. That's acceptable because the HTTP API is read-only: it searches and embeds, and
   nothing over HTTP can change the catalogue
-- request bodies over 5 MB are turned away before they're read - Starlette would otherwise take
+- request bodies over 5 MB are turned away before they're read, since Starlette would otherwise take
   in a whole upload before the endpoint's own size check. Uploads must also decode as
   JPEG/PNG/WebP whatever their `Content-Type`, and images over 25 megapixels are refused
 - `/search` and `/embed` are rate limited per client, since each runs the model on the CPU. Behind
@@ -175,5 +174,5 @@ the wording tests, which pin every sentence the UI builds from a search.
 image builds it in a separate stage, so `docker compose up --build` serves the built UI from port
 8000 and needs no Node on the host.
 
-Dependencies are pinned in `package-lock.json` - use `npm ci`, and commit the lockfile alongside
+Dependencies are pinned in `package-lock.json`, so use `npm ci`, and commit the lockfile alongside
 any `package.json` change.

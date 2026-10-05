@@ -43,7 +43,7 @@ export function nothingFits(requested, applied) {
   const raised =
     requested.price_max != null && applied.price_max != null && applied.price_max > requested.price_max;
   if (raised) {
-    return `There are no ${requestPhrase(requested)} - even raising the budget to ${amount(applied.price_max)} found none. Try a higher budget.`;
+    return `There are no ${requestPhrase(requested)}, even with the budget raised to ${amount(applied.price_max)}. Try a higher budget.`;
   }
   return "Try a broader request.";
 }
@@ -155,13 +155,13 @@ export function errorMessage(error) {
   if (status === 413) {
     const text =
       error.detail === "image dimensions too large"
-        ? "That photo has too many pixels - try a smaller one."
-        : "That photo is over 5 MB - try a smaller one.";
+        ? "That photo has too many pixels. Try a smaller one."
+        : "That photo is over 5 MB. Try a smaller one.";
     return { tone: "critical", text };
   }
   if (status === 415) return { tone: "critical", text: "That file isn't a JPEG, PNG or WebP image." };
   if (status === 0) {
-    return { tone: "critical", text: "Search failed. The server didn't respond - check that the app is still running." };
+    return { tone: "critical", text: "The server didn't respond. Check that the app is still running." };
   }
   return { tone: "critical", text: `Search failed: ${error.detail}.` };
 }

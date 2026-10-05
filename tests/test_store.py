@@ -5,7 +5,7 @@ import numpy as np
 from app import store
 
 
-def test_search_leaves_the_stored_vectors_out_of_the_response(monkeypatch):
+def test_search_skips_vectors(monkeypatch):
     request = {}
 
     def query_points(**kwargs):
@@ -18,7 +18,7 @@ def test_search_leaves_the_stored_vectors_out_of_the_response(monkeypatch):
     assert request["query_filter"].must[0].range.lte == 40
 
 
-def test_category_and_colour_filter_inside_the_database(monkeypatch):
+def test_label_filters(monkeypatch):
     request = {}
 
     def query_points(**kwargs):
@@ -31,13 +31,13 @@ def test_category_and_colour_filter_inside_the_database(monkeypatch):
     assert conditions == {"category": ["Casual Shoes", "Sports Shoes"], "colour": ["Blue"]}
 
 
-def test_a_label_list_with_nothing_in_it_matches_nothing_without_asking(monkeypatch):
+def test_empty_label_list(monkeypatch):
     monkeypatch.setattr(store, "client", lambda: None)  # would fail if called
     assert store.search(np.zeros(512, dtype=np.float32), 5, colours=[]) == []
     assert store.count_matching(categories=[]) == 0
 
 
-def test_count_matching_counts_exactly_with_the_same_filters(monkeypatch):
+def test_count_matching(monkeypatch):
     request = {}
 
     def count(collection_name, count_filter, exact):

@@ -14,7 +14,7 @@ function stream(events) {
   });
 }
 
-test("a search streams its steps, then returns the response", async () => {
+test("streams steps then returns the response", async () => {
   globalThis.fetch = async () =>
     stream([{ type: "step", step: { action: "read request (rules)" } }, { type: "done", response: { results: [] } }]);
   const steps = [];
@@ -34,7 +34,7 @@ test("a rate-limited search says when to retry", async () => {
   });
 });
 
-test("a rejected photo keeps the server's status and message", async () => {
+test("rejected photo keeps status and message", async () => {
   globalThis.fetch = async () => new Response(JSON.stringify({ detail: "image dimensions too large" }), { status: 413 });
   await assert.rejects(
     search({ query: "x" }),
@@ -42,7 +42,7 @@ test("a rejected photo keeps the server's status and message", async () => {
   );
 });
 
-test("an error without a readable message falls back to the status text", async () => {
+test("unreadable error falls back to status text", async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ detail: [{ msg: "field required" }] }), { status: 422, statusText: "Unprocessable Entity" });
   await assert.rejects(search({ query: "x" }), (error) => error.status === 422 && error.detail === "Unprocessable Entity");
@@ -55,9 +55,9 @@ test("no response at all is status 0", async () => {
   await assert.rejects(search({ query: "x" }), (error) => error instanceof ApiError && error.status === 0);
 });
 
-test("a failure partway through the stream says the search stopped", async () => {
+test("stream failure partway through", async () => {
   globalThis.fetch = async () =>
-    stream([{ type: "step", step: {} }, { type: "error", detail: "search failed - see the server log" }]);
+    stream([{ type: "step", step: {} }, { type: "error", detail: "search failed, see the server log" }]);
   await assert.rejects(
     search({ query: "x" }),
     (error) => error.status === 500 && error.detail === "the search stopped partway through",
